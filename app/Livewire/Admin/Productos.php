@@ -36,7 +36,7 @@ class Productos extends Component
             'categoria_producto_id' => 'required|exists:categoria_producto,id',
             'nombre' => 'required|string|max:150',
             'descripcion' => 'nullable|string|max:500',
-            'imagen' => 'nullable|string|max:255',
+            'imagen' => 'nullable|string|max:2048',
             'precio' => 'required|numeric|min:0',
             'precio_puntos' => 'required|integer|min:0',
             'stock' => 'required|integer|min:0',

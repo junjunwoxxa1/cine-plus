@@ -36,7 +36,7 @@ class Peliculas extends Component
     {
         return [
             'titulo' => 'required|string|max:200',
-            'imagen' => 'nullable|string|max:255',
+            'imagen' => 'nullable|string|max:2048',
             'descripcion' => 'nullable|string',
             'director' => 'nullable|string|max:100',
             'genero' => 'nullable|string|max:100',

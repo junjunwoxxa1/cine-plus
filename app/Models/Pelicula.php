@@ -83,13 +83,26 @@ class Pelicula extends Model
      */
     public function getImagenUrlAttribute(): string
     {
-        if ($this->imagen && filter_var($this->imagen, FILTER_VALIDATE_URL)) {
-            return $this->imagen;
+        $img = trim((string) $this->imagen);
+
+        if ($img === '') {
+            return 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=800&fit=crop';
         }
 
-        return $this->imagen
-            ? asset('storage/' . $this->imagen)
-            : asset('images/default-movie.jpg');
+        // Si ya es un enlace completo http:// o https:// o protocol-relative //
+        if (preg_match('/^(https?:\/\/|\/\/|data:image\/)/i', $img)) {
+            return $img;
+        }
+
+        // Quitar diagonales iniciales
+        $img = ltrim($img, '/\\');
+
+        // Si ya empieza con storage/, evitar duplicar asset('storage/storage/...')
+        if (str_starts_with($img, 'storage/')) {
+            return asset($img);
+        }
+
+        return asset('storage/' . $img);
     }
 
     /**

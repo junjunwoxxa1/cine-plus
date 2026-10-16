@@ -1,2 +1,5 @@
 *
 !.gitignore
+!logo.png
+!peliculas/
+!peliculas/**

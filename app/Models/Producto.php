@@ -51,14 +51,22 @@ class Producto extends Model
      */
     public function getImagenUrlAttribute(): string
     {
-        if ($this->imagen && filter_var($this->imagen, FILTER_VALIDATE_URL)) {
-            return $this->imagen;
+        $img = trim((string) $this->imagen);
+
+        if ($img === '') {
+            return 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?w=400&h=300&fit=crop';
         }
 
-        if ($this->imagen) {
-            return asset('storage/'.$this->imagen);
+        if (preg_match('/^(https?:\/\/|\/\/|data:image\/)/i', $img)) {
+            return $img;
         }
 
-        return 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?w=400&h=300&fit=crop';
+        $img = ltrim($img, '/\\');
+
+        if (str_starts_with($img, 'storage/')) {
+            return asset($img);
+        }
+
+        return asset('storage/' . $img);
     }
 }
