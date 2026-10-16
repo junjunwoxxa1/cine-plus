@@ -39,58 +39,7 @@
             </div>
         @endif
 
-        <!-- Bandeja de Correo Simulada si MAIL_MAILER=log o si aún no hay SMTP configurado -->
-        @if ($codigoLocal)
-            <div class="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3.5 space-y-2.5">
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                        📬 Correo Recibido (Modo Local)
-                    </span>
-                    <button
-                        type="button"
-                        @click="tokenInput = '{{ $codigoLocal }}'"
-                        class="rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-[11px] px-2.5 py-1 transition cursor-pointer">
-                        Autocompletar código
-                    </button>
-                </div>
-
-                @if ($errorSmtp)
-                    <p class="text-[11px] text-red-300 leading-relaxed">{{ $errorSmtp }}</p>
-                @endif
-
-                <div class="flex items-center justify-between rounded-lg bg-zinc-950/90 border border-amber-500/30 px-3 py-2">
-                    <span class="text-xs text-zinc-400">Tu código token:</span>
-                    <span class="font-mono text-lg font-black tracking-widest text-amber-300">{{ $codigoLocal }}</span>
-                </div>
-
-                <div class="pt-1 border-t border-amber-500/20 flex items-center justify-between text-[11px] text-zinc-400">
-                    <span>¿Quieres que llegue a tu Gmail real?</span>
-                    <button type="button" @click="mostrarConfigSmtp = !mostrarConfigSmtp" class="text-amber-400 hover:text-amber-300 font-semibold underline cursor-pointer">
-                        <span x-text="mostrarConfigSmtp ? 'Ocultar configuración SMTP' : 'Configurar Gmail SMTP'"></span>
-                    </button>
-                </div>
-
-                <form x-show="mostrarConfigSmtp" x-cloak method="POST" action="{{ route('mail.save-smtp') }}" class="pt-2 space-y-2.5 border-t border-zinc-800">
-                    @csrf
-                    <p class="text-[11px] text-zinc-300 leading-relaxed">
-                        Ingresa tu correo Gmail y una <strong>Contraseña de Aplicación de Google</strong> (16 letras generada en <em>Cuenta de Google → Seguridad → Verificación en 2 pasos → Contraseñas de aplicaciones</em>):
-                    </p>
-                    <div>
-                        <input type="email" name="smtp_email" value="{{ config('mail.mailers.smtp.username') !== 'null' ? config('mail.mailers.smtp.username') : $email }}" required
-                            placeholder="tucorreo@gmail.com"
-                            class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <input type="password" name="smtp_password" required
-                            placeholder="Contraseña de aplicación de 16 letras"
-                            class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none">
-                    </div>
-                    <button type="submit" class="w-full rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-white font-semibold text-xs py-1.5 transition cursor-pointer">
-                        Guardar SMTP Gmail en .env
-                    </button>
-                </form>
-            </div>
-        @endif
+        <!-- Formulario para ingresar Token y Nueva Contraseña -->
 
         <form method="POST" action="{{ route('password.reset-token') }}" class="flex flex-col gap-4">
             @csrf
