@@ -223,7 +223,7 @@ class PagoController extends Controller
 
         return redirect()->route('pago.comprobante', $comprobante->codigo_reserva)->with(
             'success',
-            '¡Pago procesado con éxito! Se ha enviado tu entrada en PDF a tu correo '.$comprobante->cliente_email.' y puedes verla aquí.'
+            '¡Pago procesado con éxito! Aquí tienes tu comprobante de entrada digital.'
         );
     }
 
