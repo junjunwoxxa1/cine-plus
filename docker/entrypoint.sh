@@ -17,7 +17,12 @@ fi
 if [ "${DB_CONNECTION:-sqlite}" = "sqlite" ]; then
     mkdir -p /var/www/html/database
     if [ ! -f "/var/www/html/database/database.sqlite" ]; then
-        touch /var/www/html/database/database.sqlite
+        if [ -f "/var/www/html/database/seed.sqlite" ]; then
+            echo "Copiando base de datos exacta de local (seed.sqlite)..."
+            cp /var/www/html/database/seed.sqlite /var/www/html/database/database.sqlite
+        else
+            touch /var/www/html/database/database.sqlite
+        fi
     fi
     chown -R www-data:www-data /var/www/html/database
     chmod -R 775 /var/www/html/database
