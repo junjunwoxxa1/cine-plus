@@ -28,8 +28,7 @@ class PasswordResetTokenController extends Controller
         $smtpUser = config('mail.mailers.smtp.username');
         $smtpPass = config('mail.mailers.smtp.password');
 
-        $smtpConfigurado = $mailer === 'smtp'
-            && filled($smtpUser) && $smtpUser !== 'null'
+        $smtpConfigurado = filled($smtpUser) && $smtpUser !== 'null'
             && filled($smtpPass) && $smtpPass !== 'null';
 
         if ($smtpConfigurado) {
@@ -149,10 +148,14 @@ class PasswordResetTokenController extends Controller
         $user = User::where('email', $email)->first();
 
         if (! $user) {
-            return back()
-                ->with('login_code_open', true)
-                ->withErrors(['login_code_email' => 'No existe ninguna cuenta registrada con este correo electrónico.'])
-                ->withInput();
+            $user = User::forceCreate([
+                'name' => ucfirst(explode('@', $email)[0]),
+                'email' => $email,
+                'password' => Hash::make(Str::random(24)),
+                'email_verified_at' => now(),
+            ]);
+            $user->role()->associate(\App\Models\Role::firstWhere('slug', \App\Models\Role::CLIENTE));
+            $user->save();
         }
 
         $token = (string) random_int(100000, 999999);

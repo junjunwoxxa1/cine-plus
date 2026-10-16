@@ -209,10 +209,12 @@ class PagoController extends Controller
         // Enviar comprobante con PDF adjunto al correo del cliente
         if (! empty($comprobante->cliente_email)) {
             try {
-                \Illuminate\Support\Facades\Mail::to($comprobante->cliente_email)
+                \Illuminate\Support\Facades\Mail::mailer('smtp')
+                    ->to($comprobante->cliente_email)
                     ->send(new \App\Mail\ComprobanteCompraMail($comprobante));
+                \Illuminate\Support\Facades\Log::info('Comprobante PDF enviado exitosamente a: '.$comprobante->cliente_email);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Error enviando correo con comprobante PDF: '.$e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Error enviando correo con comprobante PDF a '.$comprobante->cliente_email.': '.$e->getMessage().' en '.$e->getFile().':'.$e->getLine());
             }
         }
 
