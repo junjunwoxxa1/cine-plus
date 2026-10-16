@@ -87,6 +87,26 @@
                 </p>
             </div>
 
+            @if ($codigoLocal)
+                <div class="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                            🔑 Código de Acceso Generado
+                        </span>
+                        <button
+                            type="button"
+                            @click="codigoInput = '{{ $codigoLocal }}'"
+                            class="rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-[11px] px-2.5 py-1 transition cursor-pointer">
+                            Autocompletar
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between rounded-lg bg-zinc-950/90 border border-amber-500/30 px-3 py-2">
+                        <span class="text-xs text-zinc-400">Código de 6 dígitos:</span>
+                        <span class="font-mono text-lg font-black tracking-widest text-amber-300">{{ $codigoLocal }}</span>
+                    </div>
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('login.verify-code') }}" class="space-y-3">
                 @csrf
                 <input type="hidden" name="email" value="{{ $correoGuardado }}">
