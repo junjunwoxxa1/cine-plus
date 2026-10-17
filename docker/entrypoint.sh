@@ -39,7 +39,10 @@ php artisan storage:link --force || true
 # Ejecutar migraciones automáticamente
 php artisan migrate --force --no-interaction
 
-# Poblar la base de datos inicial (películas, salas, funciones, dulcería y usuarios demo) si está vacía
+# Asegurar roles y usuarios por defecto (Admin, Cajero, Comprador con 250 puntos)
+php artisan db:seed --class=AdminUserSeeder --force --no-interaction
+
+# Poblar la base de datos inicial (películas, salas, funciones, dulcería) si está vacía
 PELICULAS_COUNT=$(php artisan tinker --execute="echo \App\Models\Pelicula::count();" 2>/dev/null | tr -d '[:space:]' || echo "0")
 if [ "$PELICULAS_COUNT" = "0" ] || [ -z "$PELICULAS_COUNT" ]; then
     echo "Cargando datos iniciales de Cine+ (Seeders)..."
