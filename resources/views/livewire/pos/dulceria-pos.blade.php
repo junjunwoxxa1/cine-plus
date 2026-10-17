@@ -70,20 +70,28 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
                 @forelse ($productos as $p)
                     @php
-                        $agotado = $p->stock <= 0;
+                        $desactivado = ! (bool) $p->activo;
+                        $sinStock = (int) $p->stock <= 0;
+                        $noDisponible = $desactivado || $sinStock;
                         $enCarrito = $carrito[$p->id]['cantidad'] ?? 0;
                         $limiteAlcanzado = $enCarrito >= $p->stock;
                     @endphp
-                    <div wire:click="agregarAlCarrito({{ $p->id }})"
-                        class="border rounded-2xl overflow-hidden transition-all duration-200 shadow-md relative flex flex-col justify-between select-none {{ $agotado ? 'border-gray-900 bg-gray-950 opacity-40 grayscale cursor-not-allowed' : ($limiteAlcanzado ? 'border-amber-500/50 bg-gray-900/80 cursor-not-allowed' : 'border-gray-800 bg-gray-900/80 hover:border-red-500/60 hover:bg-gray-800/90 cursor-pointer hover:shadow-lg hover:-translate-y-0.5') }}"
+                    <div @if (!$noDisponible) wire:click="agregarAlCarrito({{ $p->id }})" @endif
+                        class="border rounded-2xl overflow-hidden transition-all duration-200 shadow-md relative flex flex-col justify-between select-none {{ $noDisponible ? 'border-gray-900 bg-gray-950 opacity-40 grayscale cursor-not-allowed' : ($limiteAlcanzado ? 'border-amber-500/50 bg-gray-900/80 cursor-not-allowed' : 'border-gray-800 bg-gray-900/80 hover:border-red-500/60 hover:bg-gray-800/90 cursor-pointer hover:shadow-lg hover:-translate-y-0.5') }}"
                         wire:key="pos-prod-{{ $p->id }}">
 
                         {{-- Imagen y Badges --}}
                         <div class="aspect-video bg-gray-950 relative overflow-hidden">
                             <img src="{{ $p->imagen_url }}" alt="{{ $p->nombre }}" class="w-full h-full object-cover">
                             
-                            {{-- Badge de Stock --}}
-                            @if ($agotado)
+                            {{-- Badge de Estado y Stock --}}
+                            @if ($desactivado)
+                                <div class="absolute inset-0 bg-black/80 flex items-center justify-center p-1">
+                                    <span class="bg-zinc-800 text-zinc-300 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-zinc-700 shadow">
+                                        DESACTIVADO
+                                    </span>
+                                </div>
+                            @elseif ($sinStock)
                                 <div class="absolute inset-0 bg-black/75 flex items-center justify-center p-1">
                                     <span class="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow">
                                         AGOTADO

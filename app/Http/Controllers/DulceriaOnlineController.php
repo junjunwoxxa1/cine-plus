@@ -23,7 +23,7 @@ class DulceriaOnlineController extends Controller
     public function index()
     {
         $categorias = CategoriaProducto::with(['productos' => function ($q) {
-            $q->where('activo', true)->orderBy('stock', 'desc')->orderBy('nombre');
+            $q->orderBy('stock', 'desc')->orderBy('nombre');
         }])->activas()->get();
 
         $productos = $categorias->flatMap->productos;
@@ -72,7 +72,8 @@ class DulceriaOnlineController extends Controller
         foreach ($cantidades as $id => $cantidad) {
             if ($productos->has($id)) {
                 $prod = $productos[$id];
-                if ($prod->stock <= 0) {
+                // Omitir si fue desactivado por el admin o no tiene existencias
+                if (! $prod->activo || $prod->stock <= 0) {
                     continue;
                 }
                 $cantidadReal = min((int) $prod->stock, (int) $cantidad);

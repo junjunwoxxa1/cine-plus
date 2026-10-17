@@ -130,9 +130,9 @@ class ReservaController extends Controller
 
         $funcion = Funcion::with(['pelicula', 'sala'])->findOrFail($reserva['funcion_id']);
 
-        // Categorías activas con todos sus productos activos (para mostrar disponibles y agotados)
+        // Categorías activas con todos sus productos (para mostrar disponibles, desactivados y agotados en gris)
         $categorias = \App\Models\CategoriaProducto::activas()
-            ->with(['productos' => fn ($q) => $q->where('activo', true)->orderBy('nombre')])
+            ->with(['productos' => fn ($q) => $q->orderBy('nombre')])
             ->get();
 
         $productos = $categorias->flatMap->productos;
@@ -161,7 +161,7 @@ class ReservaController extends Controller
             return redirect()->route('home')->withErrors(['error' => 'La sesión ha expirado.']);
         }
 
-        // Calcular subtotal de dulcería validando stock real
+        // Calcular subtotal de dulcería validando stock real y estado activo
         $productosSeleccionados = [];
         $montoDulceria = 0;
 
@@ -173,8 +173,8 @@ class ReservaController extends Controller
                 if ($cantidad > 0 && $productos->has($productoId)) {
                     $producto = $productos[$productoId];
 
-                    // Omitir si no hay existencias
-                    if ($producto->stock <= 0) {
+                    // Omitir si el producto fue desactivado por el admin o no tiene existencias
+                    if (! $producto->activo || $producto->stock <= 0) {
                         continue;
                     }
 

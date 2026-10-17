@@ -6,6 +6,7 @@
             'precio' => (float) $p->precio,
             'precio_puntos' => $p->precio_puntos,
             'stock' => (int) $p->stock,
+            'activo' => (bool) $p->activo,
         ])) }},
         sedesData: {{ json_encode($sedes) }}
     })">
@@ -94,16 +95,18 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                                 @foreach ($cat->productos as $producto)
                                     @php
-                                        $agotado = $producto->stock <= 0;
+                                        $desactivado = ! (bool) $producto->activo;
+                                        $sinStock = (int) $producto->stock <= 0;
+                                        $noDisponible = $desactivado || $sinStock;
                                     @endphp
-                                    <div class="border rounded-2xl overflow-hidden transition-all duration-300 shadow-lg {{ $agotado ? 'border-gray-900 bg-gray-950 opacity-60 grayscale' : 'border-gray-800 bg-gray-900/60 hover:border-gray-700 hover:shadow-xl group' }}"
+                                    <div class="border rounded-2xl overflow-hidden transition-all duration-300 shadow-lg {{ $noDisponible ? 'border-gray-900 bg-gray-950/80 opacity-60 grayscale' : 'border-gray-800 bg-gray-900/60 hover:border-gray-700 hover:shadow-xl group' }}"
                                          :class="(cantidadesProductos[{{ $producto->id }}] || 0) > 0 ? 'border-red-500/50 shadow-red-900/20' : ''">
 
                                         {{-- Imagen del Producto (con la imagen editada en el admin) --}}
                                         <div class="h-36 sm:h-40 w-full bg-gray-800 relative overflow-hidden">
                                             <img src="{{ $producto->imagen_url }}"
                                                  alt="{{ $producto->nombre }}"
-                                                 class="w-full h-full object-cover {{ !$agotado ? 'group-hover:scale-105 transition-transform duration-500' : '' }}"
+                                                 class="w-full h-full object-cover {{ !$noDisponible ? 'group-hover:scale-105 transition-transform duration-500' : '' }}"
                                                  loading="lazy">
 
                                             {{-- Badge de categoría --}}
@@ -111,8 +114,15 @@
                                                 {{ $cat->nombre }}
                                             </span>
 
-                                            @if ($agotado)
-                                                <div class="absolute inset-0 bg-gray-950/75 backdrop-blur-[1px] flex items-center justify-center p-2 text-center">
+                                            @if ($desactivado)
+                                                <div class="absolute inset-0 bg-gray-950/80 backdrop-blur-[2px] flex items-center justify-center p-2 text-center">
+                                                    <span class="bg-zinc-900/90 text-zinc-300 border border-zinc-700/60 font-black text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5">
+                                                        <span>🔒</span>
+                                                        <span>NO DISPONIBLE</span>
+                                                    </span>
+                                                </div>
+                                            @elseif ($sinStock)
+                                                <div class="absolute inset-0 bg-gray-950/80 backdrop-blur-[2px] flex items-center justify-center p-2 text-center">
                                                     <span class="bg-red-900/90 text-white border border-red-500/60 font-black text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5">
                                                         <span>🚫</span>
                                                         <span>AGOTADO / SIN STOCK</span>
@@ -136,24 +146,28 @@
                                         {{-- Info del Producto --}}
                                         <div class="p-4 space-y-3">
                                             <div>
-                                                <h3 class="font-bold text-sm text-white leading-tight">{{ $producto->nombre }}</h3>
+                                                <h3 class="font-bold text-sm leading-tight {{ $noDisponible ? 'text-gray-400' : 'text-white' }}">{{ $producto->nombre }}</h3>
                                                 <p class="text-xs text-gray-400 mt-1 line-clamp-2">{{ $producto->descripcion }}</p>
                                             </div>
 
                                             <div class="flex items-center justify-between">
                                                 {{-- Precios --}}
                                                 <div>
-                                                    <span class="text-lg font-black text-white">S/ {{ number_format($producto->precio, 2) }}</span>
+                                                    <span class="text-lg font-black {{ $noDisponible ? 'text-gray-400' : 'text-white' }}">S/ {{ number_format($producto->precio, 2) }}</span>
                                                     @if ($producto->precio_puntos > 0)
-                                                        <span class="text-[10px] text-amber-400 font-bold block mt-0.5">
+                                                        <span class="text-[10px] {{ $noDisponible ? 'text-gray-500' : 'text-amber-400' }} font-bold block mt-0.5">
                                                             ó {{ $producto->precio_puntos }} pts
                                                         </span>
                                                     @endif
                                                 </div>
 
                                                 {{-- Controles +/- --}}
-                                                @if ($agotado)
-                                                    <span class="text-xs font-bold text-gray-500 uppercase bg-gray-900 border border-gray-800 px-3 py-1.5 rounded-xl">
+                                                @if ($desactivado)
+                                                    <span class="text-xs font-bold text-gray-400 uppercase bg-gray-900 border border-gray-800 px-3 py-1.5 rounded-xl">
+                                                        No Disponible
+                                                    </span>
+                                                @elseif ($sinStock)
+                                                    <span class="text-xs font-bold text-red-400 uppercase bg-red-950/40 border border-red-900/60 px-3 py-1.5 rounded-xl">
                                                         Agotado
                                                     </span>
                                                 @else
@@ -310,7 +324,11 @@
 
                 modificarCantidad(id, cambio) {
                     let actual = this.cantidadesProductos[id] || 0;
-                    let maxStock = this.productosData[id]?.stock ?? 10;
+                    let prod = this.productosData[id];
+                    if (!prod || !prod.activo || (prod.stock || 0) <= 0) {
+                        return;
+                    }
+                    let maxStock = prod.stock ?? 10;
                     let nuevo = Math.max(0, Math.min(maxStock, actual + cambio));
                     this.cantidadesProductos[id] = nuevo;
                     this.calcularTotales();

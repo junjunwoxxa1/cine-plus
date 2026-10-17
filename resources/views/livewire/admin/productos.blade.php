@@ -41,12 +41,19 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-800/60">
                     @forelse ($productos as $prod)
-                        <tr class="hover:bg-zinc-800/30 transition-colors" wire:key="prod-{{ $prod->id }}">
+                        <tr class="hover:bg-zinc-800/30 transition-colors {{ (!$prod->activo || $prod->stock <= 0) ? 'bg-zinc-950/60 opacity-75' : '' }}" wire:key="prod-{{ $prod->id }}">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
-                                    <img src="{{ $prod->imagen_url }}" alt="{{ $prod->nombre }}" class="w-12 h-12 object-cover rounded-lg border border-zinc-800 bg-zinc-950 shrink-0">
+                                    <img src="{{ $prod->imagen_url }}" alt="{{ $prod->nombre }}" class="w-12 h-12 object-cover rounded-lg border border-zinc-800 bg-zinc-950 shrink-0 {{ (!$prod->activo || $prod->stock <= 0) ? 'grayscale' : '' }}">
                                     <div>
-                                        <p class="font-bold text-white leading-tight">{{ $prod->nombre }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="font-bold text-white leading-tight">{{ $prod->nombre }}</p>
+                                            @if (!$prod->activo)
+                                                <span class="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700 px-2 py-0.5 rounded-full font-bold">Desactivado</span>
+                                            @elseif ($prod->stock <= 0)
+                                                <span class="text-[10px] bg-red-950/80 text-red-400 border border-red-800/60 px-2 py-0.5 rounded-full font-bold">Sin Stock</span>
+                                            @endif
+                                        </div>
                                         <p class="text-xs text-zinc-400 mt-0.5 line-clamp-1">{{ $prod->descripcion }}</p>
                                     </div>
                                 </div>
@@ -62,15 +69,21 @@
                                 @elseif ($prod->stock > 0)
                                     <span class="text-xs font-bold text-amber-400">{{ $prod->stock }} un. (Bajo)</span>
                                 @else
-                                    <span class="text-xs font-bold text-red-500">Agotado</span>
+                                    <span class="text-xs font-bold text-red-500 bg-red-950/40 border border-red-900/60 px-2 py-0.5 rounded">Agotado</span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <button type="button" wire:click="toggleActivo({{ $prod->id }})" class="cursor-pointer">
+                                <button type="button" wire:click="toggleActivo({{ $prod->id }})" title="Clic para cambiar estado" class="cursor-pointer transition-transform hover:scale-105">
                                     @if ($prod->activo)
-                                        <span class="bg-green-500/10 text-green-400 border border-green-500/30 text-xs px-2.5 py-1 rounded-full font-bold">Activo</span>
+                                        <span class="bg-green-500/10 text-green-400 border border-green-500/30 text-xs px-3 py-1 rounded-full font-bold inline-flex items-center gap-1.5">
+                                            <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                                            Activo
+                                        </span>
                                     @else
-                                        <span class="bg-zinc-800 text-zinc-400 text-xs px-2.5 py-1 rounded-full font-bold">Inactivo</span>
+                                        <span class="bg-zinc-800 text-zinc-400 border border-zinc-700 text-xs px-3 py-1 rounded-full font-bold inline-flex items-center gap-1.5">
+                                            <span class="w-2 h-2 rounded-full bg-zinc-500"></span>
+                                            Inactivo
+                                        </span>
                                     @endif
                                 </button>
                             </td>

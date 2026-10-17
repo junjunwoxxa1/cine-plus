@@ -37,7 +37,7 @@ class DulceriaPos extends Component
     {
         $producto = Producto::findOrFail($productoId);
 
-        if ($producto->stock <= 0) {
+        if (! $producto->activo || $producto->stock <= 0) {
             return;
         }
 
@@ -224,8 +224,7 @@ class DulceriaPos extends Component
         $categorias = CategoriaProducto::activas()->orderBy('orden')->get();
 
         $productosQuery = Producto::query()
-            ->with('categoria')
-            ->where('activo', true);
+            ->with('categoria');
 
         if ($this->categoriaSeleccionada !== 'todos') {
             $productosQuery->whereHas('categoria', fn ($q) => $q->where('slug', $this->categoriaSeleccionada));
