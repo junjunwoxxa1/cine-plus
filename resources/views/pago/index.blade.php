@@ -48,7 +48,9 @@
 
         <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Pago y Confirmación</h1>
 
-        <form action="{{ route('pago.procesar') }}" method="POST" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <form action="{{ route('pago.procesar') }}" method="POST"
+            @submit="if (inputCodigoPromo && !codigoPromoAplicado) { aplicarCodigoPromo(); }"
+            class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             @csrf
 
             {{-- Hidden inputs para descuento y método de pago --}}
@@ -112,21 +114,38 @@
                 <div class="border border-gray-800 bg-gray-900/60 rounded-2xl p-6 space-y-4 shadow-xl">
                     <div class="flex items-center space-x-3">
                         <div class="w-1.5 h-5 bg-blue-500 rounded-full"></div>
-                        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300">Código de Descuento</h2>
+                        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300">Código de Descuento & Promociones</h2>
                     </div>
 
                     {{-- Código Promocional / Cupón --}}
-                    <div class="space-y-2">
+                    <div class="space-y-3">
                         <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block">¿Tienes un código promocional o cupón?</label>
 
                         <div class="flex gap-2" x-show="!codigoPromoAplicado">
-                            <input type="text" x-model="inputCodigoPromo" placeholder="Ej. CINE50"
+                            <input type="text" x-model="inputCodigoPromo" placeholder="Ej. CINE50, ESTUDIANTE, SOCIOCINE"
                                 @keydown.enter.prevent="aplicarCodigoPromo()"
-                                class="flex-1 uppercase tracking-wider border border-gray-800 rounded-xl px-4 py-2.5 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none">
+                                class="flex-1 uppercase tracking-wider border border-gray-800 rounded-xl px-4 py-2.5 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none font-mono">
                             <button type="button" @click="aplicarCodigoPromo()"
-                                class="border border-red-500 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase transition-colors cursor-pointer">
+                                class="border border-red-500 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase transition-colors cursor-pointer shadow-md">
                                 Aplicar
                             </button>
+                        </div>
+
+                        {{-- Promociones vigentes disponibles con 1 click --}}
+                        <div x-show="!codigoPromoAplicado && descuentosData.length > 0" class="pt-1">
+                            <p class="text-[11px] text-gray-400 mb-2 font-medium">Cupones y promociones vigentes:</p>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="desc in descuentosData" :key="desc.id">
+                                    <button type="button"
+                                        x-show="desc.codigo"
+                                        @click="inputCodigoPromo = desc.codigo; aplicarCodigoPromo();"
+                                        class="text-xs font-bold border border-gray-700 bg-gray-800 hover:border-red-500 hover:text-red-400 text-gray-300 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-sm">
+                                        <span class="text-amber-400 font-normal">🏷️</span>
+                                        <span x-text="desc.codigo"></span>
+                                        <span class="text-[10px] text-gray-400 font-normal" x-text="'(' + desc.nombre + ')'"></span>
+                                    </button>
+                                </template>
+                            </div>
                         </div>
 
                         {{-- Badge de código aplicado con éxito --}}
@@ -135,7 +154,7 @@
                                 <svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                 </svg>
-                                <span>Cupón <strong class="uppercase" x-text="codigoPromoAplicado"></strong> aplicado (<span x-text="codigoPromoInfo"></span>)</span>
+                                <span>Cupón <strong class="uppercase font-mono" x-text="codigoPromoAplicado"></strong> aplicado (<span x-text="codigoPromoInfo"></span>)</span>
                             </div>
                             <button type="button" @click="quitarCodigoPromo()" class="text-xs text-red-400 hover:text-red-300 underline font-bold cursor-pointer">
                                 Quitar
@@ -155,10 +174,19 @@
                             <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300">Club Cine+</h2>
                         </div>
                         <p class="text-xs text-gray-400 mt-1">Tienes <strong class="text-white" x-text="puntosUsuario">0</strong> puntos disponibles en tu cuenta.</p>
+                        <p class="text-[11px] text-green-400 mt-0.5" x-show="puntosUsuario >= 50 && canjearPuntos">
+                            ✓ Canje activo: 50 puntos cubren el 100% de tus entradas.
+                        </p>
+                        <p class="text-[11px] text-gray-500 mt-0.5" x-show="puntosUsuario >= 50 && !canjearPuntos">
+                            ¡Tienes puntos suficientes! Puedes canjear 50 puntos para obtener tus entradas gratis.
+                        </p>
+                        <p class="text-[11px] text-gray-500 mt-0.5" x-show="puntosUsuario < 50">
+                            Necesitas al menos 50 puntos para canjear entradas gratuitas.
+                        </p>
                     </div>
 
                     <label class="inline-flex items-center space-x-3 border border-gray-800 bg-gray-900 hover:bg-gray-800 px-4 py-3 rounded-xl cursor-pointer transition-colors"
-                           :class="puntosUsuario < 50 ? 'opacity-60 cursor-not-allowed' : ''">
+                           :class="puntosUsuario < 50 ? 'opacity-50 cursor-not-allowed' : (canjearPuntos ? 'border-red-500 bg-red-950/30' : '')">
                         <input type="checkbox" name="canjear_puntos" value="1" x-model="canjearPuntos" @change="alCambiarCanjePuntos()"
                             :disabled="puntosUsuario < 50"
                             class="w-4 h-4 rounded border-gray-700 text-red-600 focus:ring-red-500 bg-gray-950 cursor-pointer">
@@ -175,51 +203,64 @@
                         <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300">Método de Pago</h2>
                     </div>
 
-                    {{-- Botones Dinámicos de Métodos de Pago --}}
-                    <div class="flex flex-wrap gap-3">
-                        @foreach ($metodosPago as $metodo)
-                            <button type="button"
-                                @click="seleccionarMetodo('{{ $metodo->codigo }}', {{ $metodo->requiere_tarjeta ? 'true' : 'false' }}, '{{ addslashes($metodo->instrucciones ?? '') }}')"
-                                :class="metodoPago === '{{ $metodo->codigo }}' ? 'border-red-500 bg-red-600 text-white shadow-lg shadow-red-900/40' : 'border-gray-800 bg-gray-900 text-gray-300 hover:bg-gray-800'"
-                                class="border px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer">
-                                {{ $metodo->nombre }}
-                            </button>
-                        @endforeach
+                    {{-- Aviso si el total a pagar es S/ 0.00 --}}
+                    <div x-show="total === 0" class="p-4 border border-green-500/40 bg-green-950/30 rounded-xl text-xs text-green-300 space-y-1.5" x-transition>
+                        <div class="font-bold flex items-center space-x-2 text-sm text-green-400">
+                            <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            <span>¡Total cubierto al 100%!</span>
+                        </div>
+                        <p class="text-gray-300">
+                            Tu canje o promoción cubre el costo total de la orden. No necesitas ingresar datos bancarios.
+                        </p>
                     </div>
 
-                    {{-- Formulario para Tarjeta de Crédito/Débito --}}
-                    <div x-show="requiereTarjeta" class="space-y-4 pt-2" x-transition>
-                        <div class="space-y-1.5">
-                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Número de Tarjeta</label>
-                            <input type="text" name="numero_tarjeta" placeholder="0000 0000 0000 0000"
-                                :required="requiereTarjeta"
-                                maxlength="19"
-                                class="w-full border border-gray-800 rounded-xl p-3 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
+                    {{-- Botones Dinámicos de Métodos de Pago (solo si hay saldo por pagar) --}}
+                    <div x-show="total > 0" class="space-y-4">
+                        <div class="flex flex-wrap gap-3">
+                            @foreach ($metodosPago as $metodo)
+                                <button type="button"
+                                    @click="seleccionarMetodo('{{ $metodo->codigo }}', {{ $metodo->requiere_tarjeta ? 'true' : 'false' }}, '{{ addslashes($metodo->instrucciones ?? '') }}')"
+                                    :class="metodoPago === '{{ $metodo->codigo }}' ? 'border-red-500 bg-red-600 text-white shadow-lg shadow-red-900/40' : 'border-gray-800 bg-gray-900 text-gray-300 hover:bg-gray-800'"
+                                    class="border px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                                    {{ $metodo->nombre }}
+                                </button>
+                            @endforeach
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        {{-- Formulario para Tarjeta de Crédito/Débito --}}
+                        <div x-show="requiereTarjeta && total > 0" class="space-y-4 pt-2" x-transition>
                             <div class="space-y-1.5">
-                                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Vencimiento</label>
-                                <input type="text" name="vencimiento" placeholder="MM/YY"
-                                    :required="requiereTarjeta"
-                                    maxlength="5"
+                                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Número de Tarjeta</label>
+                                <input type="text" name="numero_tarjeta" placeholder="0000 0000 0000 0000"
+                                    :required="requiereTarjeta && total > 0"
+                                    maxlength="19"
                                     class="w-full border border-gray-800 rounded-xl p-3 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
                             </div>
-                            <div class="space-y-1.5">
-                                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">CVC</label>
-                                <input type="password" name="cvc" placeholder="***" maxlength="4"
-                                    :required="requiereTarjeta"
-                                    class="w-full border border-gray-800 rounded-xl p-3 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
-                            </div>
-                        </div>
-                    </div>
 
-                    {{-- Instrucciones para Billeteras / Pagos QR / Apple Pay --}}
-                    <div x-show="!requiereTarjeta" class="p-4 border border-dashed border-gray-800 rounded-xl bg-gray-950/40 text-center text-xs text-gray-300 space-y-2" x-transition>
-                        <div class="w-10 h-10 rounded-full bg-red-600/10 text-red-400 flex items-center justify-center mx-auto">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Vencimiento</label>
+                                    <input type="text" name="vencimiento" placeholder="MM/YY"
+                                        :required="requiereTarjeta && total > 0"
+                                        maxlength="5"
+                                        class="w-full border border-gray-800 rounded-xl p-3 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">CVC</label>
+                                    <input type="password" name="cvc" placeholder="***" maxlength="4"
+                                        :required="requiereTarjeta && total > 0"
+                                        class="w-full border border-gray-800 rounded-xl p-3 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
+                                </div>
+                            </div>
                         </div>
-                        <p x-text="instruccionesMetodo || ('Completa tu pago seguro mediante ' + metodoPago.toUpperCase())"></p>
+
+                        {{-- Instrucciones para Billeteras / Pagos QR / Apple Pay --}}
+                        <div x-show="!requiereTarjeta && total > 0" class="p-4 border border-dashed border-gray-800 rounded-xl bg-gray-950/40 text-center text-xs text-gray-300 space-y-2" x-transition>
+                            <div class="w-10 h-10 rounded-full bg-red-600/10 text-red-400 flex items-center justify-center mx-auto">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                            </div>
+                            <p x-text="instruccionesMetodo || ('Completa tu pago seguro mediante ' + metodoPago.toUpperCase())"></p>
+                        </div>
                     </div>
                 </div>
 
@@ -268,8 +309,8 @@
 
                         <!-- Descuento -->
                         <div class="flex justify-between text-red-400 text-xs" x-show="montoDescuento > 0">
-                            <span>Descuento aplicado</span>
-                            <span>- S/ <span x-text="montoDescuento.toFixed(2)">0.00</span></span>
+                            <span x-text="canjearPuntos ? 'Canje Club Cine+ (50 pts)' : (codigoPromoAplicado ? 'Cupón ' + codigoPromoAplicado : 'Descuento aplicado')"></span>
+                            <span class="font-bold">- S/ <span x-text="montoDescuento.toFixed(2)">0.00</span></span>
                         </div>
                     </div>
 
@@ -280,16 +321,21 @@
                         <span class="text-3xl font-black text-white">S/ <span x-text="total.toFixed(2)">0.00</span></span>
                     </div>
 
-                    <div class="border border-dashed border-amber-500/40 bg-amber-500/10 rounded-xl p-3.5 text-xs text-amber-300 flex items-center space-x-2.5">
+                    <div x-show="total > 0" class="border border-dashed border-amber-500/40 bg-amber-500/10 rounded-xl p-3.5 text-xs text-amber-300 flex items-center space-x-2.5">
                         <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                         </svg>
                         <span>Esta compra te suma <strong>+10 Puntos Cine+</strong></span>
                     </div>
 
+                    <div x-show="total === 0" class="border border-dashed border-green-500/40 bg-green-500/10 rounded-xl p-3.5 text-xs text-green-300 flex items-center space-x-2.5">
+                        <span class="text-base">🎟️</span>
+                        <span>Entradas 100% canjeadas con éxito.</span>
+                    </div>
+
                     <button type="submit"
                         class="w-full bg-red-600 border border-red-500 text-white hover:bg-red-700 py-4 px-4 rounded-xl text-xs font-bold tracking-widest uppercase shadow-lg shadow-red-900/40 transition-all duration-200 cursor-pointer">
-                        PAGAR Y CONFIRMAR
+                        <span x-text="total === 0 ? 'CONFIRMAR ENTRADAS' : 'PAGAR Y CONFIRMAR'">PAGAR Y CONFIRMAR</span>
                     </button>
                 </div>
 

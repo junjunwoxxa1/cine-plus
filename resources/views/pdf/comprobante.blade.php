@@ -301,20 +301,32 @@
 
     {{-- Totales --}}
     <table class="total-box">
+        @if ($comprobante->cantidad_entradas > 0)
+            <tr>
+                <td style="color: #6b7280;">Entradas ({{ $comprobante->cantidad_entradas }}x):</td>
+                <td class="text-right" style="font-weight: bold;">S/ {{ number_format($comprobante->monto_entradas, 2) }}</td>
+            </tr>
+        @endif
+        @if ($comprobante->monto_dulceria > 0)
+            <tr>
+                <td style="color: #6b7280;">Dulcería / Snacks:</td>
+                <td class="text-right" style="font-weight: bold;">S/ {{ number_format($comprobante->monto_dulceria, 2) }}</td>
+            </tr>
+        @endif
+        @if ($comprobante->monto_descuento > 0)
+            <tr>
+                <td style="color: #16a34a;">Descuento ({{ $comprobante->descuento_concepto ?? 'Promoción' }}):</td>
+                <td class="text-right" style="font-weight: bold; color: #16a34a;">-S/ {{ number_format($comprobante->monto_descuento, 2) }}</td>
+            </tr>
+        @endif
         <tr>
-            <td style="color: #6b7280;">Subtotal:</td>
-            <td class="text-right" style="font-weight: bold;">S/ {{ number_format($comprobante->subtotal, 2) }}</td>
+            <td style="color: #6b7280;">Op. Gravada:</td>
+            <td class="text-right">S/ {{ number_format($comprobante->subtotal, 2) }}</td>
         </tr>
         <tr>
             <td style="color: #6b7280;">IGV (18%):</td>
-            <td class="text-right" style="font-weight: bold;">S/ {{ number_format($comprobante->igv, 2) }}</td>
+            <td class="text-right">S/ {{ number_format($comprobante->igv, 2) }}</td>
         </tr>
-        @if ($comprobante->descuento > 0)
-            <tr>
-                <td style="color: #16a34a;">Descuento Aplicado:</td>
-                <td class="text-right" style="font-weight: bold; color: #16a34a;">-S/ {{ number_format($comprobante->descuento, 2) }}</td>
-            </tr>
-        @endif
         <tr class="total-row">
             <td>TOTAL PAGADO:</td>
             <td class="text-right">S/ {{ number_format($comprobante->total, 2) }}</td>

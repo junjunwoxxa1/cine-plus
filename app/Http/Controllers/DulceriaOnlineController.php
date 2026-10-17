@@ -154,11 +154,35 @@ class DulceriaOnlineController extends Controller
         $user = auth()->user();
         $metodo = MetodoPago::where('codigo', $validated['metodo_pago'])->first();
 
-        // Validar campos de tarjeta si el método lo exige
-        if ($metodo && $metodo->requiere_tarjeta) {
+        $subtotalComida = (float) $pedido['total'];
+        $montoDescuento = 0.0;
+        $descuentoConcepto = null;
+
+        if ($request->filled('descuento_id')) {
+            $descuento = Descuento::vigentes()->find($request->descuento_id);
+            if ($descuento) {
+                $montoDescuento = (float) $descuento->calcular($subtotalComida, count($pedido['items']));
+                $descuentoConcepto = $descuento->codigo
+                    ? 'Cupón '.$descuento->codigo.' ('.$descuento->nombre.')'
+                    : $descuento->nombre;
+            }
+        } elseif ($request->filled('codigo_promo')) {
+            $codigoLimpio = strtoupper(trim((string) $request->codigo_promo));
+            $descuento = Descuento::vigentes()->where('codigo', $codigoLimpio)->first();
+            if ($descuento) {
+                $montoDescuento = (float) $descuento->calcular($subtotalComida, count($pedido['items']));
+                $descuentoConcepto = 'Cupón Promocional: '.$codigoLimpio.' ('.$descuento->nombre.')';
+            }
+        }
+
+        $montoDescuento = round(min(max($montoDescuento, 0), $subtotalComida), 2);
+        $totalFinal = max(0, round($subtotalComida - $montoDescuento, 2));
+
+        // Validar campos de tarjeta solo si el método lo exige y el monto final es mayor a 0
+        if ($totalFinal > 0 && $metodo && $metodo->requiere_tarjeta) {
             $request->validate([
-                'numero_tarjeta' => 'required|string|min:15|max:19',
-                'vencimiento' => 'required|string|min:5|max:5',
+                'numero_tarjeta' => 'required|string|min:12|max:22',
+                'vencimiento' => 'required|string|min:4|max:7',
                 'cvc' => 'required|string|min:3|max:4',
             ], [
                 'numero_tarjeta.required' => 'El número de tarjeta es obligatorio para este método de pago.',
@@ -166,27 +190,6 @@ class DulceriaOnlineController extends Controller
                 'cvc.required' => 'Ingresa el código CVC.',
             ]);
         }
-
-        $subtotalComida = (float) $pedido['total'];
-        $montoDescuento = 0;
-        $descuentoConcepto = null;
-
-        if ($request->filled('descuento_id')) {
-            $descuento = Descuento::vigentes()->find($request->descuento_id);
-            if ($descuento) {
-                $montoDescuento = $descuento->calcular($subtotalComida, count($pedido['items']));
-                $descuentoConcepto = $descuento->nombre;
-            }
-        } elseif ($request->filled('codigo_promo')) {
-            $codigoLimpio = strtoupper(trim((string) $request->codigo_promo));
-            $descuento = Descuento::vigentes()->where('codigo', $codigoLimpio)->first();
-            if ($descuento) {
-                $montoDescuento = $descuento->calcular($subtotalComida, count($pedido['items']));
-                $descuentoConcepto = 'Cupón Promocional: '.$codigoLimpio;
-            }
-        }
-
-        $totalFinal = max(0, $subtotalComida - $montoDescuento);
 
         // Transacción para registrar el comprobante y descontar inventario
         $comprobante = DB::transaction(function () use (
@@ -225,7 +228,7 @@ class DulceriaOnlineController extends Controller
                 'subtotal' => round($totalFinal / 1.18, 2),
                 'igv' => round($totalFinal - ($totalFinal / 1.18), 2),
                 'total' => $totalFinal,
-                'metodo_pago_nombre' => $metodo?->nombre ?? 'Tarjeta / Digital',
+                'metodo_pago_nombre' => $totalFinal == 0 ? 'Promoción 100%' : ($metodo?->nombre ?? 'Tarjeta / Digital'),
                 'estado' => 'pagado',
             ]);
 

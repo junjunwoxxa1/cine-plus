@@ -60,6 +60,47 @@ class PagoController extends Controller
         // Obtener el método de pago seleccionado
         $metodo = MetodoPago::activos()->where('codigo', $request->input('metodo_pago'))->first();
 
+        // Obtener función y calcular subtotales
+        $funcion = Funcion::with(['pelicula', 'sala'])->findOrFail($reserva['funcion_id']);
+        $subtotalEntradas = (float) ($funcion->precio * (int) $reserva['cantidad']);
+        $montoDulceria = (float) ($reserva['monto_dulceria'] ?? 0);
+        $montoDescuento = 0.0;
+        $descuentoConcepto = null;
+        $esCanjePuntos = false;
+
+        $user = auth()->user();
+
+        // 1. Canje de Puntos Club Cine+ (50 pts = 100% descuento en entradas)
+        if ($request->boolean('canjear_puntos')) {
+            if ($user && (int) $user->saldo_puntos >= 50) {
+                $montoDescuento = $subtotalEntradas;
+                $descuentoConcepto = 'Canje de Entradas con Club Cine+ (50 pts)';
+                $esCanjePuntos = true;
+            }
+        // 2. Descuento seleccionado por ID
+        } elseif ($request->filled('descuento_id')) {
+            $descuento = Descuento::vigentes()->find($request->descuento_id);
+            if ($descuento) {
+                $montoDescuento = (float) $descuento->calcular($subtotalEntradas, (int) $reserva['cantidad']);
+                $descuentoConcepto = $descuento->codigo
+                    ? 'Cupón '.$descuento->codigo.' ('.$descuento->nombre.')'
+                    : $descuento->nombre;
+            }
+        // 3. Código promocional / Cupón tipeado
+        } elseif ($request->filled('codigo_promo')) {
+            $codigoLimpio = strtoupper(trim((string) $request->codigo_promo));
+            $descuento = Descuento::vigentes()->where('codigo', $codigoLimpio)->first();
+            if ($descuento) {
+                $montoDescuento = (float) $descuento->calcular($subtotalEntradas, (int) $reserva['cantidad']);
+                $descuentoConcepto = 'Cupón Promocional: '.$codigoLimpio.' ('.$descuento->nombre.')';
+            }
+        }
+
+        // El descuento no puede exceder el subtotal de entradas
+        $montoDescuento = round(min(max($montoDescuento, 0), $subtotalEntradas), 2);
+        $totalFinal = max(0, round(($subtotalEntradas - $montoDescuento) + $montoDulceria, 2));
+
+        // Reglas de validación
         $rules = [
             'nombre' => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -69,7 +110,8 @@ class PagoController extends Controller
             'canjear_puntos' => 'nullable|boolean',
         ];
 
-        if ($metodo && $metodo->requiere_tarjeta) {
+        // Solo requerir tarjeta si hay un saldo restante a pagar y el método lo exige
+        if ($totalFinal > 0 && $metodo && $metodo->requiere_tarjeta) {
             $rules['numero_tarjeta'] = 'required|string|min:12|max:22';
             $rules['vencimiento'] = 'required|string|min:4|max:7';
             $rules['cvc'] = 'required|string|min:3|max:4';
@@ -77,39 +119,7 @@ class PagoController extends Controller
 
         $validated = $request->validate($rules);
 
-        // Procesar cálculo y verificación en backend
-        $funcion = Funcion::with(['pelicula', 'sala'])->findOrFail($reserva['funcion_id']);
-        $subtotalEntradas = $funcion->precio * (int) $reserva['cantidad'];
-        $montoDulceria = (float) ($reserva['monto_dulceria'] ?? 0);
-        $montoDescuento = 0.0;
-        $descuentoConcepto = null;
-
-        $user = auth()->user();
-
-        if ($request->boolean('canjear_puntos')) {
-            if ($user && $user->saldo_puntos >= 50) {
-                $montoDescuento = (float) $subtotalEntradas;
-                $descuentoConcepto = 'Canje de Entradas con Club Cine+ (50 pts)';
-                $user->decrement('saldo_puntos', 50);
-            }
-        } elseif ($request->filled('descuento_id')) {
-            $descuento = Descuento::vigentes()->find($request->descuento_id);
-            if ($descuento) {
-                $montoDescuento = $descuento->calcular((float) $subtotalEntradas, (int) $reserva['cantidad']);
-                $descuentoConcepto = $descuento->nombre;
-            }
-        } elseif ($request->filled('codigo_promo')) {
-            $codigoLimpio = strtoupper(trim((string) $request->codigo_promo));
-            $descuento = Descuento::vigentes()->where('codigo', $codigoLimpio)->first();
-            if ($descuento) {
-                $montoDescuento = $descuento->calcular((float) $subtotalEntradas, (int) $reserva['cantidad']);
-                $descuentoConcepto = 'Cupón Promocional: '.$codigoLimpio;
-            }
-        }
-
-        $totalFinal = max(0, ($subtotalEntradas - $montoDescuento) + $montoDulceria);
-
-        // Crear Comprobante y detalles dentro de una transacción
+        // Crear Comprobante y detalles dentro de una transacción atómica
         $comprobante = DB::transaction(function () use (
             $validated,
             $user,
@@ -119,13 +129,22 @@ class PagoController extends Controller
             $montoDulceria,
             $montoDescuento,
             $descuentoConcepto,
+            $esCanjePuntos,
             $totalFinal,
-            $metodo,
-            $request
+            $metodo
         ) {
+            // Descontar puntos de Club Cine+ de forma atómica
+            if ($esCanjePuntos && $user) {
+                $user->decrement('saldo_puntos', 50);
+            }
+
             $correlativo = (int) (Comprobante::max('id') ?? 0) + 1;
             $numeroSerie = str_pad((string) $correlativo, 7, '0', STR_PAD_LEFT);
             $codigoReserva = 'CP-'.strtoupper(Str::random(6));
+
+            $nombreMetodoPago = $totalFinal == 0
+                ? ($esCanjePuntos ? 'Canje Club Cine+ (Puntos)' : 'Promoción 100%')
+                : ($metodo?->nombre ?? 'Tarjeta de Crédito / Débito');
 
             $nuevoComprobante = Comprobante::create([
                 'codigo_reserva' => $codigoReserva,
@@ -149,7 +168,7 @@ class PagoController extends Controller
                 'subtotal' => round($totalFinal / 1.18, 2),
                 'igv' => round($totalFinal - ($totalFinal / 1.18), 2),
                 'total' => $totalFinal,
-                'metodo_pago_nombre' => $metodo?->nombre ?? 'Tarjeta de Crédito / Débito',
+                'metodo_pago_nombre' => $nombreMetodoPago,
                 'estado' => 'pagado',
             ]);
 
@@ -161,8 +180,8 @@ class PagoController extends Controller
                 'cantidad' => (int) $reserva['cantidad'],
                 'precio_unitario' => (float) $funcion->precio,
                 'subtotal' => $subtotalEntradas,
-                'es_canje' => $request->boolean('canjear_puntos'),
-                'puntos_utilizados' => $request->boolean('canjear_puntos') ? 50 : 0,
+                'es_canje' => $esCanjePuntos,
+                'puntos_utilizados' => $esCanjePuntos ? 50 : 0,
             ]);
 
             // Detalles de Dulcería / Snacks
@@ -198,8 +217,8 @@ class PagoController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Otorgar puntos de lealtad si el usuario está autenticado
-            if ($user) {
+            // Otorgar puntos de lealtad si el usuario pagó un saldo con dinero real
+            if ($user && $totalFinal > 0) {
                 $user->increment('saldo_puntos', 10);
             }
 
