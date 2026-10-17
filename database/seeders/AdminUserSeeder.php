@@ -19,7 +19,7 @@ class AdminUserSeeder extends Seeder
             'level' => 4,
         ]);
 
-        Role::updateOrCreate(['slug' => Role::CLIENTE], [
+        $cliente = Role::updateOrCreate(['slug' => Role::CLIENTE], [
             'name' => 'Cliente',
             'description' => 'Cliente que compra entradas y dulcería',
             'level' => 1,
@@ -49,6 +49,17 @@ class AdminUserSeeder extends Seeder
         $cajero->forceFill([
             'email_verified_at' => now(),
             'role_id' => $dulceria->id,
+        ])->save();
+
+        $comprador = User::updateOrCreate(['email' => 'cliente@cineplus.com'], [
+            'name' => 'Usuario Comprador',
+            'password' => 'cliente123',
+        ]);
+
+        $comprador->forceFill([
+            'email_verified_at' => now(),
+            'role_id' => $cliente->id,
+            'saldo_puntos' => 250,
         ])->save();
     }
 }
