@@ -1,7 +1,7 @@
 <x-layouts::auth.clear :title="'Seleccionar Butacas - ' . $funcion->pelicula->titulo">
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6" x-data="reservaButacas({
-        cantidadPermitida: 2,
-        butacasIniciales: []
+        cantidadPermitida: {{ (int) ($cantidadSeleccionada ?? 2) }},
+        butacasIniciales: {{ json_encode($butacasSeleccionadas ?? []) }}
     })">
 
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -208,7 +208,7 @@
                 </form>
 
                 <div class="text-center">
-                    <a href="{{ route('home') }}"
+                    <a href="{{ route('reservas.cancelar') }}"
                         class="text-xs font-bold text-gray-400 hover:text-white underline underline-offset-4 transition-colors">
                         Cancelar Compra
                     </a>
@@ -223,7 +223,7 @@
         document.addEventListener('alpine:init', () => {
             Alpine.data('reservaButacas', (config) => ({
                 cantidadPermitida: config.cantidadPermitida || 2,
-                seleccionadas: [],
+                seleccionadas: (config.butacasIniciales && Array.isArray(config.butacasIniciales)) ? [...config.butacasIniciales] : [],
                 tiempoRestante: 599, // 9 minutos y 59 segundos en segundos
 
                 init() {
@@ -264,6 +264,12 @@
                     }
                 }
             }));
+        });
+
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                window.location.reload();
+            }
         });
     </script>
 </x-layouts::auth.clear>

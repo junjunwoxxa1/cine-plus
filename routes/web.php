@@ -34,6 +34,7 @@ Route::get('/funciones/{funcion}/butacas', [ReservaController::class, 'selectBut
 Route::post('/reservas/procesar', [ReservaController::class, 'store'])->name('reservas.store');
 Route::get('/reservas/dulceria', [ReservaController::class, 'selectDulceria'])->name('reservas.dulceria');
 Route::post('/reservas/dulceria', [ReservaController::class, 'storeDulceria'])->name('reservas.dulceria.store');
+Route::get('/reservas/cancelar', [ReservaController::class, 'cancelar'])->name('reservas.cancelar');
 
 // Compra Online Directa de Dulcería y Snacks (Sin Entrada)
 Route::get('/dulceria', [\App\Http\Controllers\DulceriaOnlineController::class, 'index'])->name('dulceria.index');

@@ -337,6 +337,13 @@
                         class="w-full bg-red-600 border border-red-500 text-white hover:bg-red-700 py-4 px-4 rounded-xl text-xs font-bold tracking-widest uppercase shadow-lg shadow-red-900/40 transition-all duration-200 cursor-pointer">
                         <span x-text="total === 0 ? 'CONFIRMAR ENTRADAS' : 'PAGAR Y CONFIRMAR'">PAGAR Y CONFIRMAR</span>
                     </button>
+
+                    <div class="text-center pt-2">
+                        <a href="{{ route('reservas.cancelar') }}"
+                            class="text-xs font-bold text-gray-400 hover:text-white underline underline-offset-4 transition-colors">
+                            Cancelar Compra
+                        </a>
+                    </div>
                 </div>
 
             </div>

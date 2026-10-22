@@ -279,6 +279,13 @@
                     @csrf
                 </form>
 
+                <div class="text-center pt-1">
+                    <a href="{{ route('reservas.cancelar') }}"
+                       class="text-xs font-bold text-gray-400 hover:text-white underline underline-offset-4 transition-colors">
+                        Cancelar Compra
+                    </a>
+                </div>
+
             </div>
         </div>
     </main>
