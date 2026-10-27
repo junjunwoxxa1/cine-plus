@@ -72,6 +72,16 @@ class Usuarios extends Component
         Flux::toast(variant: 'success', text: "Rol de {$usuario->name} actualizado exitosamente.");
     }
 
+    public function togglePuntosSeparados(): void
+    {
+        $nuevoEstado = \App\Models\Configuracion::togglePuntosSeparados();
+        if ($nuevoEstado) {
+            Flux::toast(variant: 'success', text: 'Modalidad de Puntos Separados (Cine vs. Dulcería) ACTIVADA a nivel general.');
+        } else {
+            Flux::toast(variant: 'warning', text: 'Modalidad de Puntos Separados DESACTIVADA. Sistema operando en Modo Unificado estándar.');
+        }
+    }
+
     public function eliminarUsuario(int $userId): void
     {
         $usuario = User::findOrFail($userId);
@@ -107,6 +117,7 @@ class Usuarios extends Component
         return view('livewire.admin.usuarios', [
             'usuarios' => $query->paginate(12),
             'roles' => Role::all(),
+            'puntosSeparadosActivo' => \App\Models\Configuracion::puntosSeparadosActivo(),
         ]);
     }
 }

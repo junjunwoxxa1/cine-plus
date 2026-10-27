@@ -39,6 +39,7 @@ class PagoController extends Controller
         // Métodos de pago y promociones dinámicas desde la BD
         $metodosPago = MetodoPago::activos()->get();
         $descuentos = Descuento::vigentes()->get();
+        $puntosSeparadosActivo = \App\Models\Configuracion::puntosSeparadosActivo();
 
         return view('pago.index', compact(
             'reserva',
@@ -47,7 +48,8 @@ class PagoController extends Controller
             'montoDulceria',
             'cliente',
             'metodosPago',
-            'descuentos'
+            'descuentos',
+            'puntosSeparadosActivo'
         ));
     }
 
@@ -75,37 +77,50 @@ class PagoController extends Controller
         $puntosUtilizadosDulceria = 0;
 
         $user = auth()->user();
+        $puntosSeparadosActivo = \App\Models\Configuracion::puntosSeparadosActivo();
 
-        // 1. Canje de Puntos de Cine para Entradas (50 pts = 100% descuento en entradas)
-        if ($request->boolean('canjear_puntos_cine') || $request->boolean('canjear_puntos')) {
-            $ptsCine = (int) ($user?->puntos_cine ?? 0);
-            $ptsTotal = (int) ($user?->saldo_puntos ?? 0);
+        if ($puntosSeparadosActivo) {
+            // 1. Canje de Puntos de Cine para Entradas (50 pts = 100% descuento en entradas)
+            if ($request->boolean('canjear_puntos_cine') || $request->boolean('canjear_puntos')) {
+                $ptsCine = (int) ($user?->puntos_cine ?? 0);
+                $ptsTotal = (int) ($user?->saldo_puntos ?? 0);
 
-            if ($user && ($ptsCine >= 50 || $ptsTotal >= 50)) {
-                $montoDescuento += $subtotalEntradas;
-                $descuentoConcepto = 'Canje de Entradas (50 Puntos Cine)';
-                $esCanjeCine = true;
-                $puntosUtilizadosCine = 50;
+                if ($user && ($ptsCine >= 50 || $ptsTotal >= 50)) {
+                    $montoDescuento += $subtotalEntradas;
+                    $descuentoConcepto = 'Canje de Entradas (50 Puntos Cine)';
+                    $esCanjeCine = true;
+                    $puntosUtilizadosCine = 50;
+                }
+            }
+
+            // 2. Canje de Puntos de Dulcería para Snacks/Alimentos (50 pts = hasta S/ 20.00 de descuento en dulcería)
+            if ($request->boolean('canjear_puntos_dulceria') && $montoDulceria > 0) {
+                $ptsDulceria = (int) ($user?->puntos_dulceria ?? 0);
+                $ptsTotalRestante = (int) ($user?->saldo_puntos ?? 0) - $puntosUtilizadosCine;
+
+                if ($user && ($ptsDulceria >= 50 || $ptsTotalRestante >= 50)) {
+                    $descDulceria = min($montoDulceria, 20.00);
+                    $montoDescuento += $descDulceria;
+                    $descuentoConcepto = $descuentoConcepto
+                        ? $descuentoConcepto . ' + Canje Dulcería (50 Puntos Dulcería)'
+                        : 'Canje de Snacks (50 Puntos Dulcería)';
+                    $esCanjeDulceria = true;
+                    $puntosUtilizadosDulceria = 50;
+                }
+            }
+        } else {
+            // Modo Unificado Estándar (50 pts del Club Cine+ para entradas)
+            if ($request->boolean('canjear_puntos') || $request->boolean('canjear_puntos_cine')) {
+                $ptsTotal = (int) ($user?->saldo_puntos ?? 0);
+                if ($user && $ptsTotal >= 50) {
+                    $montoDescuento += $subtotalEntradas;
+                    $descuentoConcepto = 'Canje de Entradas con Club Cine+ (50 pts)';
+                    $esCanjePuntos = true;
+                }
             }
         }
 
-        // 2. Canje de Puntos de Dulcería para Snacks/Alimentos (50 pts = hasta S/ 20.00 de descuento en dulcería)
-        if ($request->boolean('canjear_puntos_dulceria') && $montoDulceria > 0) {
-            $ptsDulceria = (int) ($user?->puntos_dulceria ?? 0);
-            $ptsTotalRestante = (int) ($user?->saldo_puntos ?? 0) - $puntosUtilizadosCine;
-
-            if ($user && ($ptsDulceria >= 50 || $ptsTotalRestante >= 50)) {
-                $descDulceria = min($montoDulceria, 20.00);
-                $montoDescuento += $descDulceria;
-                $descuentoConcepto = $descuentoConcepto
-                    ? $descuentoConcepto . ' + Canje Dulcería (50 Puntos Dulcería)'
-                    : 'Canje de Snacks (50 Puntos Dulcería)';
-                $esCanjeDulceria = true;
-                $puntosUtilizadosDulceria = 50;
-            }
-        }
-
-        $esCanjePuntos = $esCanjeCine || $esCanjeDulceria;
+        $esCanjePuntos = $esCanjePuntos || $esCanjeCine || $esCanjeDulceria;
 
         // 3. Descuento seleccionado por ID (si no hubo canje total)
         if (! $esCanjeCine && $request->filled('descuento_id')) {
@@ -170,18 +185,22 @@ class PagoController extends Controller
             $puntosUtilizadosCine,
             $puntosUtilizadosDulceria,
             $totalFinal,
-            $metodo
+            $metodo,
+            $puntosSeparadosActivo
         ) {
             // Descontar puntos de Club Cine+ de forma individual o general
             if ($user) {
-                if ($esCanjeCine && $puntosUtilizadosCine > 0) {
-                    $user->descontarPuntosCine($puntosUtilizadosCine);
-                }
-                if ($esCanjeDulceria && $puntosUtilizadosDulceria > 0) {
-                    $user->descontarPuntosDulceria($puntosUtilizadosDulceria);
-                }
-                if ($esCanjePuntos && ! $esCanjeCine && ! $esCanjeDulceria) {
-                    $user->decrement('saldo_puntos', 50);
+                if ($puntosSeparadosActivo) {
+                    if ($esCanjeCine && $puntosUtilizadosCine > 0) {
+                        $user->descontarPuntosCine($puntosUtilizadosCine);
+                    }
+                    if ($esCanjeDulceria && $puntosUtilizadosDulceria > 0) {
+                        $user->descontarPuntosDulceria($puntosUtilizadosDulceria);
+                    }
+                } else {
+                    if ($esCanjePuntos) {
+                        $user->descontarPuntosGeneral(50);
+                    }
                 }
             }
 
@@ -264,13 +283,23 @@ class PagoController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Otorgar puntos individuales si el usuario pagó un saldo con dinero real
+            // Otorgar puntos si el usuario pagó un saldo con dinero real
             if ($user && $totalFinal > 0) {
-                if ($subtotalEntradas > 0 && ! $esCanjeCine) {
-                    $user->sumarPuntosCine(10);
-                }
-                if ($montoDulceria > 0 && ! $esCanjeDulceria) {
-                    $user->sumarPuntosDulceria(5);
+                if ($puntosSeparadosActivo) {
+                    if ($subtotalEntradas > 0 && ! $esCanjeCine) {
+                        $user->sumarPuntosCine(10);
+                    }
+                    if ($montoDulceria > 0 && ! $esCanjeDulceria) {
+                        $user->sumarPuntosDulceria(5);
+                    }
+                } else {
+                    $puntosGanados = ($subtotalEntradas > 0 ? 10 : 0) + ($montoDulceria > 0 ? 5 : 0);
+                    if ($puntosGanados > 0) {
+                        $user->increment('saldo_puntos', $puntosGanados);
+                        $user->puntos_cine = (int) ($user->puntos_cine ?? 0) + ($subtotalEntradas > 0 ? 10 : 0);
+                        $user->puntos_dulceria = (int) ($user->puntos_dulceria ?? 0) + ($montoDulceria > 0 ? 5 : 0);
+                        $user->save();
+                    }
                 }
             }
 

@@ -125,7 +125,7 @@
                             </h4>
                             <div class="flex items-baseline justify-between pt-1">
                                 <span class="text-sm font-black text-white">S/ {{ number_format($p->precio, 2) }}</span>
-                                @if (!$agotado && !$limiteAlcanzado)
+                                @if (!$noDisponible && !$limiteAlcanzado)
                                     <span class="text-[10px] text-red-400 font-bold">+ Añadir</span>
                                 @endif
                             </div>

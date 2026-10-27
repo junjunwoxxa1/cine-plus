@@ -2,6 +2,9 @@
     @php
         $usuario = auth()->user();
         $puntos = (int) ($usuario->saldo_puntos ?? 0);
+        $puntosCine = (int) ($usuario->puntos_cine ?? 0);
+        $puntosDulceria = (int) ($usuario->puntos_dulceria ?? 0);
+        $puntosSeparados = \App\Models\Configuracion::puntosSeparadosActivo();
     @endphp
 
     <!-- Encabezado de Cuenta y Saldo de Puntos -->
@@ -16,15 +19,30 @@
             </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-xl px-5 py-3.5 flex items-center justify-between sm:justify-end gap-6">
-            <div>
-                <span class="block text-[11px] font-semibold uppercase tracking-wider text-gray-400">Puntos Club Cine+</span>
-                <span class="text-xs text-gray-500">50 pts = 1 entrada gratis</span>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-2 shadow-sm min-w-[280px]">
+            <div class="flex items-center justify-between gap-6">
+                <div>
+                    <span class="block text-[11px] font-semibold uppercase tracking-wider text-gray-400">Puntos Club Cine+</span>
+                    <span class="text-xs text-gray-500">50 pts = 1 entrada gratis</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-2xl font-black text-amber-400">{{ number_format($puntos) }}</span>
+                    <span class="text-xs font-semibold text-gray-400 ml-0.5">pts</span>
+                </div>
             </div>
-            <div class="text-right">
-                <span class="text-2xl font-bold text-white">{{ number_format($puntos) }}</span>
-                <span class="text-xs font-semibold text-gray-400 ml-0.5">pts</span>
-            </div>
+
+            @if ($puntosSeparados)
+                <div class="pt-2 border-t border-gray-800/80 flex items-center justify-between gap-4 text-xs">
+                    <span class="flex items-center gap-1.5 text-gray-300">
+                        <span>🎟️ Cine:</span>
+                        <strong class="text-white font-mono">{{ number_format($puntosCine) }} pts</strong>
+                    </span>
+                    <span class="flex items-center gap-1.5 text-gray-300">
+                        <span>🍿 Dulcería:</span>
+                        <strong class="text-white font-mono">{{ number_format($puntosDulceria) }} pts</strong>
+                    </span>
+                </div>
+            @endif
         </div>
     </div>
 

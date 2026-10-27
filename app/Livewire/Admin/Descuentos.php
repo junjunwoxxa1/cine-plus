@@ -103,6 +103,16 @@ class Descuentos extends Component
         $this->cargarDescuentos();
     }
 
+    public function togglePuntosSeparados(): void
+    {
+        $nuevoEstado = \App\Models\Configuracion::togglePuntosSeparados();
+        if ($nuevoEstado) {
+            Flux::toast(variant: 'success', text: 'Modalidad de Puntos Separados (Cine vs. Dulcería) ACTIVADA a nivel general.');
+        } else {
+            Flux::toast(variant: 'warning', text: 'Modalidad de Puntos Separados DESACTIVADA. Sistema operando en Modo Unificado estándar.');
+        }
+    }
+
     public function eliminar(int $id): void
     {
         $d = Descuento::findOrFail($id);
@@ -115,6 +125,7 @@ class Descuentos extends Component
     {
         return view('livewire.admin.descuentos', [
             'tipos' => TipoDescuento::cases(),
+            'puntosSeparadosActivo' => \App\Models\Configuracion::puntosSeparadosActivo(),
         ]);
     }
 }

@@ -46,15 +46,58 @@
                         </a>
                     @endif
 
+                    @if (auth()->user()->canAccessPos())
+                        <a href="{{ route('pos.dulceria')" target="_blank" class="hidden sm:inline-flex text-[11px] sm:text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors items-center gap-1">
+                            <span>🍿</span>
+                            <span>POS Dulcería</span>
+                        </a>
+                    @endif
+
+                    {{-- Saldo de Puntos en la Barra Superior --}}
+                    <a href="{{ route('profile.edit') }}"
+                        title="Tus Puntos Club Cine+ (Clic para ver detalles)"
+                        class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-white bg-amber-500/10 border border-amber-500/30 hover:border-amber-400 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-sm">
+                        <span>⭐</span>
+                        <span class="font-mono">{{ (int) auth()->user()->saldo_puntos }}</span>
+                        <span class="text-[10px] text-amber-400/80 hidden xs:inline">pts</span>
+                    </a>
+
                     <flux:dropdown position="bottom" align="end">
                         <button type="button" class="border border-gray-700 bg-gray-800 hover:border-gray-500 rounded-full w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center font-bold text-xs uppercase cursor-pointer transition-all shadow-md text-white">
                             {{ auth()->user()->initials() }}
                         </button>
-                        <flux:menu>
+                        <flux:menu class="w-64">
                             <div class="px-2 py-1.5 text-xs text-zinc-400">
-                                <p class="font-bold text-white">{{ auth()->user()->name }}</p>
+                                <p class="font-bold text-white text-sm">{{ auth()->user()->name }}</p>
                                 <p class="truncate">{{ auth()->user()->email }}</p>
                             </div>
+
+                            {{-- Tarjeta de Puntos en el Menú de Perfil --}}
+                            <div class="px-2.5 py-2 my-1 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-zinc-400 font-semibold flex items-center gap-1">
+                                        <span>⭐</span>
+                                        <span>Puntos Club Cine+:</span>
+                                    </span>
+                                    <span class="font-mono font-black text-amber-400 text-sm">
+                                        {{ (int) auth()->user()->saldo_puntos }} pts
+                                    </span>
+                                </div>
+                                @if (\App\Models\Configuracion::puntosSeparadosActivo())
+                                    <div class="pt-1.5 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400">
+                                        <span class="flex items-center gap-1">
+                                            <span>🎟️ Cine:</span>
+                                            <strong class="text-zinc-200">{{ (int) auth()->user()->puntos_cine }}</strong>
+                                        </span>
+                                        <span class="text-zinc-600">•</span>
+                                        <span class="flex items-center gap-1">
+                                            <span>🍿 Dulcería:</span>
+                                            <strong class="text-zinc-200">{{ (int) auth()->user()->puntos_dulceria }}</strong>
+                                        </span>
+                                    </div>
+                                @endif
+                            </div>
+
                             <flux:menu.separator />
                             <flux:menu.item :href="route('compras.index')" icon="ticket">
                                 Mis Compras & Entradas
@@ -65,6 +108,11 @@
                             @if (auth()->user()->isAdmin())
                                 <flux:menu.item :href="route('admin.dashboard')" icon="command-line">
                                     Panel de Administración
+                                </flux:menu.item>
+                            @endif
+                            @if (auth()->user()->canAccessPos())
+                                <flux:menu.item :href="route('pos.dulceria')" icon="calculator" target="_blank">
+                                    Punto de Venta (POS)
                                 </flux:menu.item>
                             @endif
                             <flux:menu.separator />

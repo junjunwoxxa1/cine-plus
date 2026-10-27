@@ -182,59 +182,78 @@
                         </div>
                     </div>
 
-                    {{-- Desglose visual de puntos individuales ganados --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-3 flex items-center justify-between">
-                            <div>
-                                <span class="text-gray-300 font-bold block">🎟️ Puntos Cine (Entradas)</span>
-                                <span class="text-[11px] text-gray-500">Ganados por compras de entradas</span>
-                            </div>
-                            <span class="text-sm font-bold font-mono text-red-400"><span x-text="puntosCine">0</span> pts</span>
-                        </div>
-
-                        <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-3 flex items-center justify-between">
-                            <div>
-                                <span class="text-gray-300 font-bold block">🍿 Puntos Dulcería (Snacks)</span>
-                                <span class="text-[11px] text-gray-500">Ganados por compras en confitería</span>
-                            </div>
-                            <span class="text-sm font-bold font-mono text-amber-400"><span x-text="puntosDulceria">0</span> pts</span>
-                        </div>
-                    </div>
-
-                    {{-- Opciones de Canje Individuales por Separado --}}
-                    <div class="space-y-3 pt-1">
-                        {{-- Canje de Entradas con Puntos Cine --}}
-                        <label class="flex items-center justify-between border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl cursor-pointer transition-colors"
-                               :class="(puntosCine < 50 && puntosUsuario < 50) ? 'opacity-50 cursor-not-allowed' : (canjearPuntosCine ? 'border-red-500 bg-red-950/20' : '')">
-                            <div class="flex items-center space-x-3">
-                                <input type="checkbox" name="canjear_puntos_cine" value="1" x-model="canjearPuntosCine" @change="alCambiarCanjeCine()"
-                                    :disabled="puntosCine < 50 && puntosUsuario < 50"
-                                    class="w-4 h-4 rounded border-gray-700 text-red-600 focus:ring-red-500 bg-gray-950 cursor-pointer">
+                    @if ($puntosSeparadosActivo)
+                        {{-- Desglose visual de puntos individuales ganados --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-3 flex items-center justify-between">
                                 <div>
-                                    <span class="text-xs font-bold text-gray-200 block">🎟️ Canjear Entradas de Cine (50 pts Cine)</span>
-                                    <span class="text-[11px] text-gray-400">Descuenta el 100% del subtotal de tus entradas usando tus puntos de cine</span>
+                                    <span class="text-gray-300 font-bold block">🎟️ Puntos Cine (Entradas)</span>
+                                    <span class="text-[11px] text-gray-500">Ganados por compras de entradas</span>
                                 </div>
+                                <span class="text-sm font-bold font-mono text-red-400"><span x-text="puntosCine">0</span> pts</span>
                             </div>
-                            <span class="text-xs font-bold text-red-400" x-show="canjearPuntosCine">- 100% Entradas</span>
-                        </label>
 
-                        {{-- Canje de Dulcería con Puntos Dulcería --}}
-                        @if ($montoDulceria > 0)
+                            <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-3 flex items-center justify-between">
+                                <div>
+                                    <span class="text-gray-300 font-bold block">🍿 Puntos Dulcería (Snacks)</span>
+                                    <span class="text-[11px] text-gray-500">Ganados por compras en confitería</span>
+                                </div>
+                                <span class="text-sm font-bold font-mono text-amber-400"><span x-text="puntosDulceria">0</span> pts</span>
+                            </div>
+                        </div>
+
+                        {{-- Opciones de Canje Individuales por Separado --}}
+                        <div class="space-y-3 pt-1">
+                            {{-- Canje de Entradas con Puntos Cine --}}
                             <label class="flex items-center justify-between border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl cursor-pointer transition-colors"
-                                   :class="(puntosDulceria < 50 && puntosUsuario < 50) ? 'opacity-50 cursor-not-allowed' : (canjearPuntosDulceria ? 'border-amber-500 bg-amber-950/20' : '')">
+                                   :class="(puntosCine < 50 && puntosUsuario < 50) ? 'opacity-50 cursor-not-allowed' : (canjearPuntosCine ? 'border-red-500 bg-red-950/20' : '')">
                                 <div class="flex items-center space-x-3">
-                                    <input type="checkbox" name="canjear_puntos_dulceria" value="1" x-model="canjearPuntosDulceria" @change="alCambiarCanjeDulceria()"
-                                        :disabled="puntosDulceria < 50 && puntosUsuario < 50"
-                                        class="w-4 h-4 rounded border-gray-700 text-amber-500 focus:ring-amber-500 bg-gray-950 cursor-pointer">
+                                    <input type="checkbox" name="canjear_puntos_cine" value="1" x-model="canjearPuntosCine" @change="alCambiarCanjeCine()"
+                                        :disabled="puntosCine < 50 && puntosUsuario < 50"
+                                        class="w-4 h-4 rounded border-gray-700 text-red-600 focus:ring-red-500 bg-gray-950 cursor-pointer">
                                     <div>
-                                        <span class="text-xs font-bold text-gray-200 block">🍿 Canjear Snacks / Dulcería (50 pts Dulcería)</span>
-                                        <span class="text-[11px] text-gray-400">Descuenta hasta S/ 20.00 en tus compras de dulcería usando tus puntos</span>
+                                        <span class="text-xs font-bold text-gray-200 block">🎟️ Canjear Entradas de Cine (50 pts Cine)</span>
+                                        <span class="text-[11px] text-gray-400">Descuenta el 100% del subtotal de tus entradas usando tus puntos de cine</span>
                                     </div>
                                 </div>
-                                <span class="text-xs font-bold text-amber-400" x-show="canjearPuntosDulceria">- S/ 20.00 Dulcería</span>
+                                <span class="text-xs font-bold text-red-400" x-show="canjearPuntosCine">- 100% Entradas</span>
                             </label>
-                        @endif
-                    </div>
+
+                            {{-- Canje de Dulcería con Puntos Dulcería --}}
+                            @if ($montoDulceria > 0)
+                                <label class="flex items-center justify-between border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl cursor-pointer transition-colors"
+                                       :class="(puntosDulceria < 50 && puntosUsuario < 50) ? 'opacity-50 cursor-not-allowed' : (canjearPuntosDulceria ? 'border-amber-500 bg-amber-950/20' : '')">
+                                    <div class="flex items-center space-x-3">
+                                        <input type="checkbox" name="canjear_puntos_dulceria" value="1" x-model="canjearPuntosDulceria" @change="alCambiarCanjeDulceria()"
+                                            :disabled="puntosDulceria < 50 && puntosUsuario < 50"
+                                            class="w-4 h-4 rounded border-gray-700 text-amber-500 focus:ring-amber-500 bg-gray-950 cursor-pointer">
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-200 block">🍿 Canjear Snacks / Dulcería (50 pts Dulcería)</span>
+                                            <span class="text-[11px] text-gray-400">Descuenta hasta S/ 20.00 en tus compras de dulcería usando tus puntos</span>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs font-bold text-amber-400" x-show="canjearPuntosDulceria">- S/ 20.00 Dulcería</span>
+                                </label>
+                            @endif
+                        </div>
+                    @else
+                        {{-- Modo Unificado Estándar --}}
+                        <div class="space-y-3 pt-1">
+                            <label class="flex items-center justify-between border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl cursor-pointer transition-colors"
+                                   :class="puntosUsuario < 50 ? 'opacity-50 cursor-not-allowed' : (canjearPuntos ? 'border-amber-500 bg-amber-950/20' : '')">
+                                <div class="flex items-center space-x-3">
+                                    <input type="checkbox" name="canjear_puntos" value="1" x-model="canjearPuntos" @change="alCambiarCanjePuntos()"
+                                        :disabled="puntosUsuario < 50"
+                                        class="w-4 h-4 rounded border-gray-700 text-amber-500 focus:ring-amber-500 bg-gray-950 cursor-pointer">
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-200 block">⭐ Canjear Entradas con Club Cine+ (50 Puntos)</span>
+                                        <span class="text-[11px] text-gray-400">Descuenta el 100% del subtotal de tus entradas usando tus puntos acumulados</span>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold text-amber-400" x-show="canjearPuntos">- 100% Entradas</span>
+                            </label>
+                        </div>
+                    @endif
                 </div>
 
                 <!-- 5. Método de Pago (Dinámico desde BD) -->

@@ -6,6 +6,44 @@
         </div>
     </div>
 
+    <!-- Modalidad General de Puntos Separados (Cine vs. Dulcería) -->
+    <div class="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border {{ $puntosSeparadosActivo ? 'border-amber-500/40' : 'border-zinc-800' }} rounded-2xl p-5 shadow-sm space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="space-y-1 max-w-2xl">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xl">⭐</span>
+                    <h2 class="text-base font-bold text-white">Modalidad General del Club Cine+</h2>
+                    @if ($puntosSeparadosActivo)
+                        <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                            ● PUNTOS SEPARADOS ACTIVADO
+                        </span>
+                    @else
+                        <span class="bg-zinc-800 text-zinc-400 border border-zinc-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                            ● MODO UNIFICADO ESTÁNDAR
+                        </span>
+                    @endif
+                </div>
+                <p class="text-xs text-zinc-400 leading-relaxed">
+                    @if ($puntosSeparadosActivo)
+                        <strong>Modo Separado Activo a Nivel General:</strong> Los clientes acumulan y canjean de forma independiente sus puntos de <span class="text-amber-300">🎟️ Cine</span> (para entradas) y <span class="text-amber-300">🍿 Dulcería</span> (para combos y confitería).
+                    @else
+                        <strong>Modo Unificado Estándar:</strong> Todos los puntos de los clientes se acumulan en un único saldo total del Club Cine+ para canjes globales.
+                    @endif
+                </p>
+            </div>
+            <div class="shrink-0">
+                <button
+                    type="button"
+                    wire:click="togglePuntosSeparados"
+                    wire:loading.attr="disabled"
+                    class="px-4 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer shadow-md flex items-center gap-2 {{ $puntosSeparadosActivo ? 'bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40' : 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/30' }}"
+                >
+                    <span>{{ $puntosSeparadosActivo ? '⚙️ Cambiar a Modo Unificado' : '🚀 Activar Puntos Separados (Cine vs. Dulcería)' }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Filtros -->
     <div class="flex flex-col sm:flex-row gap-3">
         <div class="flex-1">
@@ -54,21 +92,28 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="space-y-1">
+                                @if ($puntosSeparadosActivo)
+                                    <div class="space-y-1">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-mono text-xs font-black text-amber-400">{{ $u->saldo_puntos ?? 0 }} pts</span>
+                                            <span class="text-[10px] text-zinc-500 font-bold uppercase">(Total)</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 text-[11px] text-zinc-400">
+                                            <span title="Puntos ganados por cine / entradas" class="flex items-center gap-0.5">
+                                                🎟️ <strong class="text-zinc-200">{{ $u->puntos_cine ?? 0 }}</strong> cine
+                                            </span>
+                                            <span class="text-zinc-600">•</span>
+                                            <span title="Puntos ganados por dulcería / snacks" class="flex items-center gap-0.5">
+                                                🍿 <strong class="text-zinc-200">{{ $u->puntos_dulceria ?? 0 }}</strong> dulcería
+                                            </span>
+                                        </div>
+                                    </div>
+                                @else
                                     <div class="flex items-center gap-1.5">
                                         <span class="font-mono text-xs font-black text-amber-400">{{ $u->saldo_puntos ?? 0 }} pts</span>
-                                        <span class="text-[10px] text-zinc-500 font-bold uppercase">(Total)</span>
+                                        <span class="text-[10px] text-zinc-500 font-semibold">(Club Cine+)</span>
                                     </div>
-                                    <div class="flex items-center gap-2 text-[11px] text-zinc-400">
-                                        <span title="Puntos ganados por cine / entradas" class="flex items-center gap-0.5">
-                                            🎟️ <strong class="text-zinc-200">{{ $u->puntos_cine ?? 0 }}</strong> cine
-                                        </span>
-                                        <span class="text-zinc-600">•</span>
-                                        <span title="Puntos ganados por dulcería / snacks" class="flex items-center gap-0.5">
-                                            🍿 <strong class="text-zinc-200">{{ $u->puntos_dulceria ?? 0 }}</strong> dulcería
-                                        </span>
-                                    </div>
-                                </div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-xs text-zinc-400 whitespace-nowrap">
                                 {{ $u->created_at->format('d/m/Y H:i') }}

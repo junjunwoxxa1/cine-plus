@@ -142,4 +142,25 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         $this->puntos_dulceria = max(0, $puntosDisponibles - $puntos);
         $this->actualizarTotalPuntos();
     }
+
+    /**
+     * Descuenta puntos del saldo general (Modo Unificado).
+     */
+    public function descontarPuntosGeneral(int $puntos): void
+    {
+        $saldoActual = (int) ($this->saldo_puntos ?? 0);
+        $this->saldo_puntos = max(0, $saldoActual - $puntos);
+
+        // Descontar proporcionalmente de las bolsas individuales para mantener consistencia
+        $pCine = (int) ($this->puntos_cine ?? 0);
+        if ($pCine >= $puntos) {
+            $this->puntos_cine = $pCine - $puntos;
+        } else {
+            $restante = $puntos - $pCine;
+            $this->puntos_cine = 0;
+            $this->puntos_dulceria = max(0, (int) ($this->puntos_dulceria ?? 0) - $restante);
+        }
+
+        $this->save();
+    }
 }

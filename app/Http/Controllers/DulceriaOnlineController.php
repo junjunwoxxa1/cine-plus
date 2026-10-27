@@ -260,9 +260,15 @@ class DulceriaOnlineController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Sumar puntos de dulcería al usuario si está autenticado
+            // Sumar puntos al usuario si está autenticado
             if ($user && $totalFinal > 0) {
-                $user->sumarPuntosDulceria(5);
+                if (\App\Models\Configuracion::puntosSeparadosActivo()) {
+                    $user->sumarPuntosDulceria(5);
+                } else {
+                    $user->increment('saldo_puntos', 5);
+                    $user->puntos_dulceria = (int) ($user->puntos_dulceria ?? 0) + 5;
+                    $user->save();
+                }
             }
 
             return $nuevoComprobante;

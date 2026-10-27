@@ -23,6 +23,16 @@
 
             <flux:spacer />
 
+            @auth
+                <a href="{{ route('profile.edit') }}"
+                    title="Tus Puntos Club Cine+ (Clic para ver detalles)"
+                    class="mr-2 inline-flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-white bg-amber-500/10 border border-amber-500/30 hover:border-amber-400 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-sm">
+                    <span>⭐</span>
+                    <span class="font-mono">{{ (int) auth()->user()->saldo_puntos }}</span>
+                    <span class="text-[10px] text-amber-400/80 hidden xs:inline">pts</span>
+                </a>
+            @endauth
+
             <x-desktop-user-menu />
         </flux:header>
 
