@@ -53,8 +53,22 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 font-mono text-xs font-bold text-amber-400 whitespace-nowrap">
-                                {{ $u->saldo_puntos ?? 0 }} pts
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-mono text-xs font-black text-amber-400">{{ $u->saldo_puntos ?? 0 }} pts</span>
+                                        <span class="text-[10px] text-zinc-500 font-bold uppercase">(Total)</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-[11px] text-zinc-400">
+                                        <span title="Puntos ganados por cine / entradas" class="flex items-center gap-0.5">
+                                            🎟️ <strong class="text-zinc-200">{{ $u->puntos_cine ?? 0 }}</strong> cine
+                                        </span>
+                                        <span class="text-zinc-600">•</span>
+                                        <span title="Puntos ganados por dulcería / snacks" class="flex items-center gap-0.5">
+                                            🍿 <strong class="text-zinc-200">{{ $u->puntos_dulceria ?? 0 }}</strong> dulcería
+                                        </span>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-6 py-4 text-xs text-zinc-400 whitespace-nowrap">
                                 {{ $u->created_at->format('d/m/Y H:i') }}
@@ -72,18 +86,29 @@
                                 </select>
                             </td>
                             <td class="px-6 py-4 text-right whitespace-nowrap">
-                                @if ($u->id !== auth()->id())
+                                <div class="flex items-center justify-end gap-2">
                                     <flux:button
                                         size="sm"
-                                        variant="danger"
-                                        wire:click="eliminarUsuario({{ $u->id }})"
-                                        wire:confirm="¿Seguro que deseas eliminar al usuario {{ $u->name }} ({{ $u->email }})?"
+                                        variant="subtle"
+                                        wire:click="editarPuntos({{ $u->id }})"
+                                        title="Gestionar puntos individuales (Cine vs Dulcería)"
                                     >
-                                        Eliminar
+                                        🎁 Puntos
                                     </flux:button>
-                                @else
-                                    <span class="text-xs text-zinc-500 italic">Sesión actual</span>
-                                @endif
+
+                                    @if ($u->id !== auth()->id())
+                                        <flux:button
+                                            size="sm"
+                                            variant="danger"
+                                            wire:click="eliminarUsuario({{ $u->id }})"
+                                            wire:confirm="¿Seguro que deseas eliminar al usuario {{ $u->name }} ({{ $u->email }})?"
+                                        >
+                                            Eliminar
+                                        </flux:button>
+                                    @else
+                                        <span class="text-xs text-zinc-500 italic">Sesión actual</span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -99,4 +124,40 @@
             {{ $usuarios->links() }}
         </div>
     </div>
+
+    <!-- Modal Gestión de Puntos Individuales -->
+    <flux:modal wire:model="modalPuntosAbierto" class="max-w-md w-full space-y-5">
+        <div>
+            <flux:heading size="lg">Gestionar Puntos Individuales</flux:heading>
+            <flux:subheading>Asigna y distribuye los puntos de <strong class="text-white">{{ $usuarioPuntosNombre }}</strong> entre entradas de cine y dulcería.</flux:subheading>
+        </div>
+
+        <form wire:submit="guardarPuntos" class="space-y-4">
+            <flux:field>
+                <flux:label>🎟️ Puntos Ganados por Cine (Entradas)</flux:label>
+                <flux:input type="number" min="0" wire:model.live="puntos_cine_edit" required />
+                <flux:description>Puntos canjeables por boletos y entradas de películas.</flux:description>
+                <flux:error name="puntos_cine_edit" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>🍿 Puntos Ganados por Dulcería (Snacks / Combos)</flux:label>
+                <flux:input type="number" min="0" wire:model.live="puntos_dulceria_edit" required />
+                <flux:description>Puntos canjeables por productos de confitería y bebidas.</flux:description>
+                <flux:error name="puntos_dulceria_edit" />
+            </flux:field>
+
+            <div class="p-3 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-between text-xs">
+                <span class="text-zinc-400 font-medium">⭐ Saldo Total Acumulado:</span>
+                <span class="text-amber-400 font-black font-mono text-sm">
+                    {{ (int) $puntos_cine_edit + (int) $puntos_dulceria_edit }} pts
+                </span>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:button variant="subtle" wire:click="$set('modalPuntosAbierto', false)">Cancelar</flux:button>
+                <flux:button variant="primary" type="submit" wire:loading.attr="disabled">Guardar Puntos</flux:button>
+            </div>
+        </form>
+    </flux:modal>
 </div>

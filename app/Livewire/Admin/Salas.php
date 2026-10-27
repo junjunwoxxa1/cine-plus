@@ -24,6 +24,7 @@ class Salas extends Component
     public int $filas = 5;
     public int $asientos_por_fila = 10;
     public string $plantilla = 'clasica';
+    public bool $guardando = false;
 
     protected function rules(): array
     {
@@ -83,130 +84,166 @@ class Salas extends Component
 
     public function guardar(): void
     {
-        $validated = $this->validate();
-        $letras = range('A', 'Z');
-
-        $mapaConfig = Sala::generarConfiguracionPlantilla(
-            $validated['plantilla'],
-            $validated['filas'],
-            $validated['asientos_por_fila']
-        );
-        $celdasEscalera = $mapaConfig['celdas_escalera'] ?? [];
-        $capacidad = max(1, ($validated['filas'] * $validated['asientos_por_fila']) - count($celdasEscalera));
-
-        if ($this->salaId) {
-            $sala = Sala::with(['butacas', 'funciones'])->findOrFail($this->salaId);
-
-            if ($validated['plantilla'] === 'personalizada' && is_array($sala->mapa_config)) {
-                $mapaConfig = $sala->mapa_config;
-                $celdasEscalera = $mapaConfig['celdas_escalera'] ?? [];
-                $capacidad = max(1, ($validated['filas'] * $validated['asientos_por_fila']) - count($celdasEscalera));
-            }
-
-            $codigosEsperados = [];
-            for ($f = 0; $f < $validated['filas']; $f++) {
-                $filaLetra = $letras[$f];
-                for ($num = 1; $num <= $validated['asientos_por_fila']; $num++) {
-                    $codigosEsperados[] = "{$filaLetra}-{$num}";
-                }
-            }
-
-            $sala->update([
-                'numero_sala' => $validated['numero_sala'],
-                'sede' => $validated['sede'],
-                'capacidad' => $capacidad,
-                'plantilla' => $validated['plantilla'],
-                'mapa_config' => $mapaConfig,
-            ]);
-
-            $sala->butacas()->whereNotIn('numero_butaca', $codigosEsperados)->delete();
-            $existentes = $sala->butacas()->pluck('numero_butaca')->toArray();
-
-            $nuevas = [];
-            foreach ($codigosEsperados as $codigo) {
-                if (! in_array($codigo, $existentes, true)) {
-                    $nuevas[] = [
-                        'numero_butaca' => $codigo,
-                        'sala_id' => $sala->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-            }
-
-            if (! empty($nuevas)) {
-                Butaca::insert($nuevas);
-            }
-
-            $butacasActivas = $sala->butacas()->get();
-            $butacasIds = $butacasActivas->pluck('id')->toArray();
-
-            foreach ($sala->funciones as $funcion) {
-                DB::table('funcion_butaca')
-                    ->where('funcion_id', $funcion->id)
-                    ->whereNotIn('butaca_id', $butacasIds)
-                    ->delete();
-
-                $pivoteExistentes = DB::table('funcion_butaca')
-                    ->where('funcion_id', $funcion->id)
-                    ->pluck('butaca_id')
-                    ->toArray();
-
-                $faltantes = array_diff($butacasIds, $pivoteExistentes);
-                $pivoteRows = [];
-                foreach ($faltantes as $bId) {
-                    $pivoteRows[] = [
-                        'funcion_id' => $funcion->id,
-                        'butaca_id' => $bId,
-                        'disponible' => true,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-                if (! empty($pivoteRows)) {
-                    DB::table('funcion_butaca')->insert($pivoteRows);
-                }
-
-                $cfgF = $funcion->obtenerMapaConfig();
-                $escF = $cfgF['celdas_escalera'] ?? [];
-                $idsEscalera = $butacasActivas->whereIn('numero_butaca', $escF)->pluck('id')->toArray();
-
-                $disponiblesQuery = DB::table('funcion_butaca')
-                    ->where('funcion_id', $funcion->id)
-                    ->where('disponible', true);
-
-                if (! empty($idsEscalera)) {
-                    $disponiblesQuery->whereNotIn('butaca_id', $idsEscalera);
-                }
-
-                $funcion->update(['asientos_disponibles' => $disponiblesQuery->count()]);
-            }
-
-            Flux::toast(variant: 'success', text: "Sala y plantilla actualizadas ({$capacidad} butacas útiles).");
-        } else {
-            $sala = Sala::create([
-                'numero_sala' => $validated['numero_sala'],
-                'sede' => $validated['sede'],
-                'capacidad' => $capacidad,
-                'plantilla' => $validated['plantilla'],
-                'mapa_config' => $mapaConfig,
-            ]);
-
-            for ($f = 0; $f < $validated['filas']; $f++) {
-                $filaLetra = $letras[$f];
-                for ($num = 1; $num <= $validated['asientos_por_fila']; $num++) {
-                    Butaca::create([
-                        'numero_butaca' => "{$filaLetra}-{$num}",
-                        'sala_id' => $sala->id,
-                    ]);
-                }
-            }
-
-            Flux::toast(variant: 'success', text: "Sala creada con su plantilla y {$capacidad} butacas útiles.");
+        if ($this->guardando) {
+            return;
         }
 
-        $this->modalAbierto = false;
-        $this->cargarSalas();
+        $this->guardando = true;
+
+        try {
+            $validated = $this->validate();
+
+            // Evitar duplicados de salas en la misma sede
+            $duplicadoQuery = Sala::where('sede', $validated['sede'])
+                ->where('numero_sala', $validated['numero_sala']);
+
+            if ($this->salaId) {
+                $duplicadoQuery->where('id', '!=', $this->salaId);
+            }
+
+            if ($duplicadoQuery->exists()) {
+                $this->addError('numero_sala', 'Ya existe una sala con este nombre en la sede seleccionada.');
+                Flux::toast(variant: 'danger', text: "Ya existe una sala llamada '{$validated['numero_sala']}' en '{$validated['sede']}'.");
+                return;
+            }
+
+            $letras = range('A', 'Z');
+
+            $mapaConfig = Sala::generarConfiguracionPlantilla(
+                $validated['plantilla'],
+                $validated['filas'],
+                $validated['asientos_por_fila']
+            );
+            $celdasEscalera = $mapaConfig['celdas_escalera'] ?? [];
+            $capacidad = max(1, ($validated['filas'] * $validated['asientos_por_fila']) - count($celdasEscalera));
+
+            if ($this->salaId) {
+                $sala = Sala::with(['butacas', 'funciones'])->findOrFail($this->salaId);
+
+                if ($validated['plantilla'] === 'personalizada' && is_array($sala->mapa_config)) {
+                    $mapaConfig = $sala->mapa_config;
+                    $celdasEscalera = $mapaConfig['celdas_escalera'] ?? [];
+                    $capacidad = max(1, ($validated['filas'] * $validated['asientos_por_fila']) - count($celdasEscalera));
+                }
+
+                $codigosEsperados = [];
+                for ($f = 0; $f < $validated['filas']; $f++) {
+                    $filaLetra = $letras[$f];
+                    for ($num = 1; $num <= $validated['asientos_por_fila']; $num++) {
+                        $codigosEsperados[] = "{$filaLetra}-{$num}";
+                    }
+                }
+
+                DB::transaction(function () use ($sala, $validated, $capacidad, $mapaConfig, $codigosEsperados) {
+                    $sala->update([
+                        'numero_sala' => $validated['numero_sala'],
+                        'sede' => $validated['sede'],
+                        'capacidad' => $capacidad,
+                        'plantilla' => $validated['plantilla'],
+                        'mapa_config' => $mapaConfig,
+                    ]);
+
+                    $sala->butacas()->whereNotIn('numero_butaca', $codigosEsperados)->delete();
+                    $existentes = $sala->butacas()->pluck('numero_butaca')->toArray();
+
+                    $nuevas = [];
+                    foreach ($codigosEsperados as $codigo) {
+                        if (! in_array($codigo, $existentes, true)) {
+                            $nuevas[] = [
+                                'numero_butaca' => $codigo,
+                                'sala_id' => $sala->id,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+                    }
+
+                    if (! empty($nuevas)) {
+                        Butaca::insert($nuevas);
+                    }
+
+                    $butacasActivas = $sala->butacas()->get();
+                    $butacasIds = $butacasActivas->pluck('id')->toArray();
+
+                    foreach ($sala->funciones as $funcion) {
+                        DB::table('funcion_butaca')
+                            ->where('funcion_id', $funcion->id)
+                            ->whereNotIn('butaca_id', $butacasIds)
+                            ->delete();
+
+                        $pivoteExistentes = DB::table('funcion_butaca')
+                            ->where('funcion_id', $funcion->id)
+                            ->pluck('butaca_id')
+                            ->toArray();
+
+                        $faltantes = array_diff($butacasIds, $pivoteExistentes);
+                        $pivoteRows = [];
+                        foreach ($faltantes as $bId) {
+                            $pivoteRows[] = [
+                                'funcion_id' => $funcion->id,
+                                'butaca_id' => $bId,
+                                'disponible' => true,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+                        if (! empty($pivoteRows)) {
+                            DB::table('funcion_butaca')->insert($pivoteRows);
+                        }
+
+                        $cfgF = $funcion->obtenerMapaConfig();
+                        $escF = $cfgF['celdas_escalera'] ?? [];
+                        $idsEscalera = $butacasActivas->whereIn('numero_butaca', $escF)->pluck('id')->toArray();
+
+                        $disponiblesQuery = DB::table('funcion_butaca')
+                            ->where('funcion_id', $funcion->id)
+                            ->where('disponible', true);
+
+                        if (! empty($idsEscalera)) {
+                            $disponiblesQuery->whereNotIn('butaca_id', $idsEscalera);
+                        }
+
+                        $funcion->update(['asientos_disponibles' => $disponiblesQuery->count()]);
+                    }
+                });
+
+                Flux::toast(variant: 'success', text: "Sala y plantilla actualizadas ({$capacidad} butacas útiles).");
+            } else {
+                DB::transaction(function () use ($validated, $capacidad, $mapaConfig, $letras) {
+                    $sala = Sala::create([
+                        'numero_sala' => $validated['numero_sala'],
+                        'sede' => $validated['sede'],
+                        'capacidad' => $capacidad,
+                        'plantilla' => $validated['plantilla'],
+                        'mapa_config' => $mapaConfig,
+                    ]);
+
+                    $todasButacas = [];
+                    for ($f = 0; $f < $validated['filas']; $f++) {
+                        $filaLetra = $letras[$f];
+                        for ($num = 1; $num <= $validated['asientos_por_fila']; $num++) {
+                            $todasButacas[] = [
+                                'numero_butaca' => "{$filaLetra}-{$num}",
+                                'sala_id' => $sala->id,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+                    }
+
+                    if (! empty($todasButacas)) {
+                        Butaca::insert($todasButacas);
+                    }
+                });
+
+                Flux::toast(variant: 'success', text: "Sala creada con su plantilla y {$capacidad} butacas útiles.");
+            }
+
+            $this->modalAbierto = false;
+            $this->cargarSalas();
+        } finally {
+            $this->guardando = false;
+        }
     }
 
     public function eliminar(int $id): void

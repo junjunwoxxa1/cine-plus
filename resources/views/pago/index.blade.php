@@ -3,6 +3,8 @@
         precioUnitario: {{ (float) $funcion->precio }},
         cantidadEntradas: {{ (int) $reserva['cantidad'] }},
         puntosUsuario: {{ (int) $cliente['puntos'] }},
+        puntosCine: {{ (int) ($cliente['puntos_cine'] ?? 0) }},
+        puntosDulceria: {{ (int) ($cliente['puntos_dulceria'] ?? 0) }},
         subtotalProductos: {{ (float) $montoDulceria }},
         metodoInicial: '{{ $metodosPago->first()?->codigo ?? 'tarjeta' }}',
         requiereTarjetaInicial: {{ ($metodosPago->first()?->requiere_tarjeta ?? true) ? 'true' : 'false' }},
@@ -166,34 +168,73 @@
                     </div>
                 </div>
 
-                <!-- 4. Canje de Puntos Club Cine+ -->
-                <div class="border border-gray-800 bg-gray-900/60 rounded-2xl p-6 space-y-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
+                <!-- 4. Canje de Puntos Club Cine+ (Puntos Separados: Cine y Dulcería) -->
+                <div class="border border-gray-800 bg-gray-900/60 rounded-2xl p-6 space-y-4 shadow-xl">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800/80 pb-3">
                         <div class="flex items-center space-x-2">
-                            <span class="text-amber-400 font-bold">★</span>
-                            <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300">Club Cine+</h2>
+                            <span class="text-amber-400 font-bold text-lg">★</span>
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300">Club Cine+ (Canje de Puntos)</h2>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Tienes <strong class="text-white" x-text="puntosUsuario">0</strong> puntos disponibles en tu cuenta.</p>
-                        <p class="text-[11px] text-green-400 mt-0.5" x-show="puntosUsuario >= 50 && canjearPuntos">
-                            ✓ Canje activo: 50 puntos cubren el 100% de tus entradas.
-                        </p>
-                        <p class="text-[11px] text-gray-500 mt-0.5" x-show="puntosUsuario >= 50 && !canjearPuntos">
-                            ¡Tienes puntos suficientes! Puedes canjear 50 puntos para obtener tus entradas gratis.
-                        </p>
-                        <p class="text-[11px] text-gray-500 mt-0.5" x-show="puntosUsuario < 50">
-                            Necesitas al menos 50 puntos para canjear entradas gratuitas.
-                        </p>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1 rounded-lg font-bold">
+                                ⭐ Total Acumulado: <span class="font-mono text-white" x-text="puntosUsuario">0</span> pts
+                            </span>
+                        </div>
                     </div>
 
-                    <label class="inline-flex items-center space-x-3 border border-gray-800 bg-gray-900 hover:bg-gray-800 px-4 py-3 rounded-xl cursor-pointer transition-colors"
-                           :class="puntosUsuario < 50 ? 'opacity-50 cursor-not-allowed' : (canjearPuntos ? 'border-red-500 bg-red-950/30' : '')">
-                        <input type="checkbox" name="canjear_puntos" value="1" x-model="canjearPuntos" @change="alCambiarCanjePuntos()"
-                            :disabled="puntosUsuario < 50"
-                            class="w-4 h-4 rounded border-gray-700 text-red-600 focus:ring-red-500 bg-gray-950 cursor-pointer">
-                        <span class="text-xs font-bold text-gray-200">
-                            Canjear Entradas (50 pts)
-                        </span>
-                    </label>
+                    {{-- Desglose visual de puntos individuales ganados --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-3 flex items-center justify-between">
+                            <div>
+                                <span class="text-gray-300 font-bold block">🎟️ Puntos Cine (Entradas)</span>
+                                <span class="text-[11px] text-gray-500">Ganados por compras de entradas</span>
+                            </div>
+                            <span class="text-sm font-bold font-mono text-red-400"><span x-text="puntosCine">0</span> pts</span>
+                        </div>
+
+                        <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-3 flex items-center justify-between">
+                            <div>
+                                <span class="text-gray-300 font-bold block">🍿 Puntos Dulcería (Snacks)</span>
+                                <span class="text-[11px] text-gray-500">Ganados por compras en confitería</span>
+                            </div>
+                            <span class="text-sm font-bold font-mono text-amber-400"><span x-text="puntosDulceria">0</span> pts</span>
+                        </div>
+                    </div>
+
+                    {{-- Opciones de Canje Individuales por Separado --}}
+                    <div class="space-y-3 pt-1">
+                        {{-- Canje de Entradas con Puntos Cine --}}
+                        <label class="flex items-center justify-between border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl cursor-pointer transition-colors"
+                               :class="(puntosCine < 50 && puntosUsuario < 50) ? 'opacity-50 cursor-not-allowed' : (canjearPuntosCine ? 'border-red-500 bg-red-950/20' : '')">
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" name="canjear_puntos_cine" value="1" x-model="canjearPuntosCine" @change="alCambiarCanjeCine()"
+                                    :disabled="puntosCine < 50 && puntosUsuario < 50"
+                                    class="w-4 h-4 rounded border-gray-700 text-red-600 focus:ring-red-500 bg-gray-950 cursor-pointer">
+                                <div>
+                                    <span class="text-xs font-bold text-gray-200 block">🎟️ Canjear Entradas de Cine (50 pts Cine)</span>
+                                    <span class="text-[11px] text-gray-400">Descuenta el 100% del subtotal de tus entradas usando tus puntos de cine</span>
+                                </div>
+                            </div>
+                            <span class="text-xs font-bold text-red-400" x-show="canjearPuntosCine">- 100% Entradas</span>
+                        </label>
+
+                        {{-- Canje de Dulcería con Puntos Dulcería --}}
+                        @if ($montoDulceria > 0)
+                            <label class="flex items-center justify-between border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl cursor-pointer transition-colors"
+                                   :class="(puntosDulceria < 50 && puntosUsuario < 50) ? 'opacity-50 cursor-not-allowed' : (canjearPuntosDulceria ? 'border-amber-500 bg-amber-950/20' : '')">
+                                <div class="flex items-center space-x-3">
+                                    <input type="checkbox" name="canjear_puntos_dulceria" value="1" x-model="canjearPuntosDulceria" @change="alCambiarCanjeDulceria()"
+                                        :disabled="puntosDulceria < 50 && puntosUsuario < 50"
+                                        class="w-4 h-4 rounded border-gray-700 text-amber-500 focus:ring-amber-500 bg-gray-950 cursor-pointer">
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-200 block">🍿 Canjear Snacks / Dulcería (50 pts Dulcería)</span>
+                                        <span class="text-[11px] text-gray-400">Descuenta hasta S/ 20.00 en tus compras de dulcería usando tus puntos</span>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold text-amber-400" x-show="canjearPuntosDulceria">- S/ 20.00 Dulcería</span>
+                            </label>
+                        @endif
+                    </div>
                 </div>
 
                 <!-- 5. Método de Pago (Dinámico desde BD) -->
@@ -309,7 +350,7 @@
 
                         <!-- Descuento -->
                         <div class="flex justify-between text-red-400 text-xs" x-show="montoDescuento > 0">
-                            <span x-text="canjearPuntos ? 'Canje Club Cine+ (50 pts)' : (codigoPromoAplicado ? 'Cupón ' + codigoPromoAplicado : 'Descuento aplicado')"></span>
+                            <span x-text="canjearPuntosCine && canjearPuntosDulceria ? 'Canje Cine (50 pts) + Dulcería (50 pts)' : (canjearPuntosCine ? 'Canje Entradas Cine (50 pts)' : (canjearPuntosDulceria ? 'Canje Dulcería (50 pts)' : (canjearPuntos ? 'Canje Club Cine+ (50 pts)' : (codigoPromoAplicado ? 'Cupón ' + codigoPromoAplicado : 'Descuento aplicado'))))"></span>
                             <span class="font-bold">- S/ <span x-text="montoDescuento.toFixed(2)">0.00</span></span>
                         </div>
                     </div>
@@ -358,6 +399,8 @@
                 precioUnitario: config.precioUnitario || 0,
                 cantidadEntradas: config.cantidadEntradas || 1,
                 puntosUsuario: config.puntosUsuario || 0,
+                puntosCine: config.puntosCine || 0,
+                puntosDulceria: config.puntosDulceria || 0,
                 subtotalProductos: config.subtotalProductos || 0,
                 metodoPago: config.metodoInicial || 'tarjeta',
                 requiereTarjeta: config.requiereTarjetaInicial ?? true,
@@ -371,6 +414,8 @@
                 codigoPromoInfo: '',
                 errorCodigoPromo: '',
 
+                canjearPuntosCine: false,
+                canjearPuntosDulceria: false,
                 canjearPuntos: false,
                 subtotalEntradas: 0,
                 montoDescuento: 0,
@@ -385,6 +430,18 @@
                     this.metodoPago = codigo;
                     this.requiereTarjeta = requiereTarjeta;
                     this.instruccionesMetodo = instrucciones || '';
+                },
+
+                alCambiarCanjeCine() {
+                    if (this.canjearPuntosCine) {
+                        this.descuentoId = '';
+                        this.codigoPromoAplicado = '';
+                    }
+                    this.calcularTotales();
+                },
+
+                alCambiarCanjeDulceria() {
+                    this.calcularTotales();
                 },
 
                 alCambiarCanjePuntos() {
@@ -409,6 +466,7 @@
                         return;
                     }
 
+                    this.canjearPuntosCine = false;
                     this.canjearPuntos = false;
                     this.descuentoId = encontrado.id;
                     this.codigoPromoAplicado = encontrado.codigo;
@@ -427,25 +485,31 @@
                 },
 
                 calcularTotales() {
-                    let desc = 0;
+                    let descEntradas = 0;
+                    let descDulceria = 0;
 
-                    if (this.canjearPuntos && this.puntosUsuario >= 50) {
-                        desc = this.subtotalEntradas;
+                    if ((this.canjearPuntosCine || this.canjearPuntos) && (this.puntosCine >= 50 || this.puntosUsuario >= 50)) {
+                        descEntradas = this.subtotalEntradas;
                     } else if (this.descuentoId) {
                         const d = this.descuentosData.find(item => item.id == this.descuentoId);
                         if (d) {
                             if (d.tipo === 'porcentaje') {
-                                desc = (this.subtotalEntradas * d.valor) / 100;
+                                descEntradas = (this.subtotalEntradas * d.valor) / 100;
                             } else if (d.tipo === 'monto_por_entrada') {
-                                desc = d.valor * this.cantidadEntradas;
+                                descEntradas = d.valor * this.cantidadEntradas;
                             } else if (d.tipo === 'monto_total') {
-                                desc = d.valor;
+                                descEntradas = d.valor;
                             }
                         }
                     }
 
-                    this.montoDescuento = Math.min(Math.max(0, desc), this.subtotalEntradas);
-                    this.total = Math.max(0, (this.subtotalEntradas - this.montoDescuento) + this.subtotalProductos);
+                    if (this.canjearPuntosDulceria && (this.puntosDulceria >= 50 || this.puntosUsuario >= 50)) {
+                        descDulceria = Math.min(this.subtotalProductos, 20.00);
+                    }
+
+                    descEntradas = Math.min(Math.max(0, descEntradas), this.subtotalEntradas);
+                    this.montoDescuento = descEntradas + descDulceria;
+                    this.total = Math.max(0, (this.subtotalEntradas - descEntradas) + (this.subtotalProductos - descDulceria));
                 }
             }));
         });

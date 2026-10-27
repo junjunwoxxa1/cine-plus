@@ -20,6 +20,43 @@ class Usuarios extends Component
     public string $busqueda = '';
     public string $filtroRol = '';
 
+    // Modal para Gestión de Puntos Individuales (Cine vs Dulcería)
+    public bool $modalPuntosAbierto = false;
+    public ?int $usuarioPuntosId = null;
+    public string $usuarioPuntosNombre = '';
+    public int $puntos_cine_edit = 0;
+    public int $puntos_dulceria_edit = 0;
+
+    public function editarPuntos(int $userId): void
+    {
+        $usuario = User::findOrFail($userId);
+        $this->usuarioPuntosId = $usuario->id;
+        $this->usuarioPuntosNombre = $usuario->name;
+        $this->puntos_cine_edit = (int) ($usuario->puntos_cine ?? 0);
+        $this->puntos_dulceria_edit = (int) ($usuario->puntos_dulceria ?? 0);
+        $this->modalPuntosAbierto = true;
+    }
+
+    public function guardarPuntos(): void
+    {
+        $this->validate([
+            'puntos_cine_edit' => 'required|integer|min:0',
+            'puntos_dulceria_edit' => 'required|integer|min:0',
+        ]);
+
+        if ($this->usuarioPuntosId) {
+            $usuario = User::findOrFail($this->usuarioPuntosId);
+            $usuario->puntos_cine = $this->puntos_cine_edit;
+            $usuario->puntos_dulceria = $this->puntos_dulceria_edit;
+            $usuario->saldo_puntos = $this->puntos_cine_edit + $this->puntos_dulceria_edit;
+            $usuario->save();
+
+            Flux::toast(variant: 'success', text: "Puntos actualizados para {$usuario->name}: {$usuario->puntos_cine} Cine + {$usuario->puntos_dulceria} Dulcería = {$usuario->saldo_puntos} pts total.");
+        }
+
+        $this->modalPuntosAbierto = false;
+    }
+
     public function cambiarRol(int $userId, int $roleId): void
     {
         $usuario = User::findOrFail($userId);

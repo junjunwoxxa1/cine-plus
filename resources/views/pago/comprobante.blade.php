@@ -33,16 +33,16 @@
             </div>
         </div>
 
-        {{-- Banner de Confirmación Exitosa --}}
-        <div class="border border-green-500/40 bg-green-950/30 rounded-2xl p-6 text-center space-y-2 shadow-2xl print:border-black print:bg-white print:text-black">
-            <div class="w-12 h-12 bg-green-600/20 text-green-400 rounded-full flex items-center justify-center mx-auto border border-green-500/40 print:hidden">
+        {{-- Banner de Confirmación Exitosa (Oculto en Impresión para garantizar 1 sola página) --}}
+        <div class="border border-green-500/40 bg-green-950/30 rounded-2xl p-6 text-center space-y-2 shadow-2xl print:hidden">
+            <div class="w-12 h-12 bg-green-600/20 text-green-400 rounded-full flex items-center justify-center mx-auto border border-green-500/40">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
                 </svg>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight print:text-black">¡Pago Confirmado con Éxito!</h1>
-            <p class="text-sm text-green-300 font-medium print:text-gray-700">Tu entrada digital ha sido generada. Presenta el código QR directamente en el acceso a la sala.</p>
-            <p class="text-xs text-gray-400 pt-1">Código de Reserva: <strong class="text-white print:text-black font-mono text-sm tracking-wider">#{{ $comprobante->codigo_reserva }}</strong></p>
+            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">¡Pago Confirmado con Éxito!</h1>
+            <p class="text-sm text-green-300 font-medium">Tu entrada digital ha sido generada. Presenta el código QR directamente en el acceso a la sala.</p>
+            <p class="text-xs text-gray-400 pt-1">Código de Reserva: <strong class="text-white font-mono text-sm tracking-wider">#{{ $comprobante->codigo_reserva }}</strong></p>
         </div>
 
         {{-- TICKET DE ENTRADA ESTILO CINEPLANET (Con Perforación Central) --}}
@@ -285,15 +285,54 @@
 
     </main>
 
-    {{-- Estilos para Impresión Limpia en PDF --}}
+    {{-- Estilos para Impresión Limpia en 1 Sola Página --}}
     <style>
         @media print {
-            body {
-                background-color: white !important;
-                color: black !important;
+            @page {
+                size: A4 portrait;
+                margin: 6mm 10mm;
             }
-            header, footer, nav {
+            html, body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                font-size: 11px !important;
+                line-height: 1.25 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            header, footer, nav, .print\:hidden {
                 display: none !important;
+            }
+            main {
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+                gap: 8px !important;
+            }
+            main > div {
+                margin-bottom: 8px !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .rounded-3xl, .rounded-2xl {
+                border-radius: 8px !important;
+            }
+            .p-6, .p-8 {
+                padding: 8px 12px !important;
+            }
+            .space-y-6 > * + * {
+                margin-top: 6px !important;
+            }
+            .space-y-4 > * + * {
+                margin-top: 4px !important;
+            }
+            .space-y-3 > * + * {
+                margin-top: 3px !important;
+            }
+            svg {
+                max-height: 110px !important;
             }
         }
     </style>

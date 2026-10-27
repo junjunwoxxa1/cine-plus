@@ -53,6 +53,7 @@ class Funciones extends Component
     public int $sala_filas = 5;
     public int $sala_asientos_por_fila = 10;
     public string $sala_plantilla = 'clasica';
+    public bool $guardando = false;
 
     protected function rules(): array
     {
@@ -164,81 +165,126 @@ class Funciones extends Component
 
     public function guardar(): void
     {
-        $validated = $this->validate();
+        if ($this->guardando) {
+            return;
+        }
 
-        $sala = Sala::with('butacas')->findOrFail($validated['sala_id']);
-        [$filasCount, $colCount] = $this->dimensionesDeSala($sala);
+        $this->guardando = true;
 
-        $plantillaElegida = $this->plantilla_funcion !== 'heredar' ? $this->plantilla_funcion : null;
-        $mapaConfigFuncion = $plantillaElegida
-            ? Sala::generarConfiguracionPlantilla($plantillaElegida, $filasCount, $colCount)
-            : null;
+        try {
+            $validated = $this->validate();
 
-        if ($this->funcionId) {
-            $f = Funcion::findOrFail($this->funcionId);
-            $cambioSala = (int) $f->sala_id !== (int) $sala->id;
+            $sala = Sala::with('butacas')->findOrFail($validated['sala_id']);
+            [$filasCount, $colCount] = $this->dimensionesDeSala($sala);
 
-            $datosUpdate = [
-                'pelicula_id' => $validated['pelicula_id'],
-                'sala_id' => $validated['sala_id'],
-                'fecha_hora' => $validated['fecha_hora'],
-                'precio' => $validated['precio'],
-                'precio_puntos' => $validated['precio_puntos'],
-            ];
+            $plantillaElegida = $this->plantilla_funcion !== 'heredar' ? $this->plantilla_funcion : null;
+            $mapaConfigFuncion = $plantillaElegida
+                ? Sala::generarConfiguracionPlantilla($plantillaElegida, $filasCount, $colCount)
+                : null;
 
-            if ($this->plantilla_funcion === 'heredar') {
-                $datosUpdate['plantilla'] = null;
-                $datosUpdate['mapa_config'] = null;
-            } elseif ($this->plantilla_funcion !== $f->plantilla) {
-                $datosUpdate['plantilla'] = $plantillaElegida;
-                $datosUpdate['mapa_config'] = $mapaConfigFuncion;
-            }
+            if ($this->funcionId) {
+                // Verificar que no haya otra función en la misma sala al mismo horario
+                $conflicto = Funcion::where('sala_id', $validated['sala_id'])
+                    ->where('fecha_hora', $validated['fecha_hora'])
+                    ->where('id', '!=', $this->funcionId)
+                    ->exists();
 
-            $f->update($datosUpdate);
+                if ($conflicto) {
+                    Flux::toast(variant: 'danger', text: 'Ya existe una función programada en esta misma sala para esa fecha y hora.');
+                    $this->addError('fecha_hora', 'La sala ya está ocupada en este horario.');
+                    return;
+                }
 
-            if ($cambioSala) {
-                $this->sincronizarButacasDeFuncion($f, $sala, true);
-                Flux::toast(variant: 'success', text: 'Función actualizada y butacas reasignadas a la nueva sala.');
+                $f = Funcion::findOrFail($this->funcionId);
+                $cambioSala = (int) $f->sala_id !== (int) $sala->id;
+
+                $datosUpdate = [
+                    'pelicula_id' => $validated['pelicula_id'],
+                    'sala_id' => $validated['sala_id'],
+                    'fecha_hora' => $validated['fecha_hora'],
+                    'precio' => $validated['precio'],
+                    'precio_puntos' => $validated['precio_puntos'],
+                ];
+
+                if ($this->plantilla_funcion === 'heredar') {
+                    $datosUpdate['plantilla'] = null;
+                    $datosUpdate['mapa_config'] = null;
+                } elseif ($this->plantilla_funcion !== $f->plantilla) {
+                    $datosUpdate['plantilla'] = $plantillaElegida;
+                    $datosUpdate['mapa_config'] = $mapaConfigFuncion;
+                }
+
+                $f->update($datosUpdate);
+
+                if ($cambioSala) {
+                    $this->sincronizarButacasDeFuncion($f, $sala, true);
+                    Flux::toast(variant: 'success', text: 'Función actualizada y butacas reasignadas a la nueva sala.');
+                } else {
+                    $this->recalcularAsientosDisponibles($f->fresh(['sala', 'butacas']));
+                    Flux::toast(variant: 'success', text: 'Función actualizada correctamente.');
+                }
             } else {
-                $this->recalcularAsientosDisponibles($f->fresh(['sala', 'butacas']));
-                Flux::toast(variant: 'success', text: 'Función actualizada correctamente.');
-            }
-        } else {
-            $fechasHorasCrear = [Carbon::parse($validated['fecha_hora'])];
+                $fechasHorasCrear = [Carbon::parse($validated['fecha_hora'])];
 
-            $fechaDia = Carbon::parse($validated['fecha_hora'])->format('Y-m-d');
-            foreach ($this->horariosAdicionales as $horaExtra) {
-                $candidato = Carbon::parse($fechaDia.' '.$horaExtra);
-                if (! collect($fechasHorasCrear)->contains(fn ($dt) => $dt->format('Y-m-d H:i') === $candidato->format('Y-m-d H:i'))) {
-                    $fechasHorasCrear[] = $candidato;
+                $fechaDia = Carbon::parse($validated['fecha_hora'])->format('Y-m-d');
+                foreach ($this->horariosAdicionales as $horaExtra) {
+                    $candidato = Carbon::parse($fechaDia.' '.$horaExtra);
+                    if (! collect($fechasHorasCrear)->contains(fn ($dt) => $dt->format('Y-m-d H:i') === $candidato->format('Y-m-d H:i'))) {
+                        $fechasHorasCrear[] = $candidato;
+                    }
+                }
+
+                $creadasExitosas = 0;
+                $omitidasDuplicadas = 0;
+
+                foreach ($fechasHorasCrear as $dt) {
+                    // Evitar duplicados de funciones en la misma sala y horario
+                    $yaExiste = Funcion::where('sala_id', $validated['sala_id'])
+                        ->where('fecha_hora', $dt->format('Y-m-d H:i:s'))
+                        ->exists();
+
+                    if ($yaExiste) {
+                        $omitidasDuplicadas++;
+                        continue;
+                    }
+
+                    DB::transaction(function () use ($validated, $dt, $sala, $plantillaElegida, $mapaConfigFuncion) {
+                        $funcion = Funcion::create([
+                            'pelicula_id' => $validated['pelicula_id'],
+                            'sala_id' => $validated['sala_id'],
+                            'fecha_hora' => $dt,
+                            'precio' => $validated['precio'],
+                            'precio_puntos' => $validated['precio_puntos'],
+                            'asientos_disponibles' => $sala->capacidad,
+                            'plantilla' => $plantillaElegida,
+                            'mapa_config' => $mapaConfigFuncion,
+                        ]);
+
+                        $this->sincronizarButacasDeFuncion($funcion, $sala, true);
+                    });
+
+                    $creadasExitosas++;
+                }
+
+                if ($creadasExitosas > 0) {
+                    Flux::toast(
+                        variant: 'success',
+                        text: $creadasExitosas > 1
+                            ? "Se programaron {$creadasExitosas} funciones correctamente."
+                            : 'Función programada y butacas inicializadas.'
+                    );
+                } elseif ($omitidasDuplicadas > 0) {
+                    Flux::toast(
+                        variant: 'warning',
+                        text: 'El horario seleccionado ya se encuentra ocupado en esta sala.'
+                    );
                 }
             }
 
-            foreach ($fechasHorasCrear as $dt) {
-                $funcion = Funcion::create([
-                    'pelicula_id' => $validated['pelicula_id'],
-                    'sala_id' => $validated['sala_id'],
-                    'fecha_hora' => $dt,
-                    'precio' => $validated['precio'],
-                    'precio_puntos' => $validated['precio_puntos'],
-                    'asientos_disponibles' => $sala->capacidad,
-                    'plantilla' => $plantillaElegida,
-                    'mapa_config' => $mapaConfigFuncion,
-                ]);
-
-                $this->sincronizarButacasDeFuncion($funcion, $sala, true);
-            }
-
-            $totalCreadas = count($fechasHorasCrear);
-            Flux::toast(
-                variant: 'success',
-                text: $totalCreadas > 1
-                    ? "Se programaron {$totalCreadas} funciones con su plantilla de butacas."
-                    : 'Función programada y butacas inicializadas.'
-            );
+            $this->modalAbierto = false;
+        } finally {
+            $this->guardando = false;
         }
-
-        $this->modalAbierto = false;
     }
 
     public function eliminar(int $id): void
@@ -514,6 +560,17 @@ class Funciones extends Component
             'sala_asientos_por_fila' => 'required|integer|min:1|max:30',
             'sala_plantilla' => 'required|string|max:50',
         ]);
+
+        $duplicado = Sala::where('sede', $this->sala_sede)
+            ->where('numero_sala', $this->sala_numero)
+            ->where('id', '!=', $this->editSalaId)
+            ->exists();
+
+        if ($duplicado) {
+            $this->addError('sala_numero', "Ya existe otra sala con el nombre '{$this->sala_numero}' en la sede '{$this->sala_sede}'.");
+            Flux::toast(variant: 'danger', text: "Ya existe una sala con este nombre en '{$this->sala_sede}'.");
+            return;
+        }
 
         $sala = Sala::with(['butacas', 'funciones'])->findOrFail($this->editSalaId);
 

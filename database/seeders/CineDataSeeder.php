@@ -28,6 +28,16 @@ class CineDataSeeder extends Seeder
         foreach ($salasData as $salaInfo) {
             $capacidadTotal = count($salaInfo['filas']) * $salaInfo['asientos_por_fila'];
 
+            $salaExistente = DB::table('sala')
+                ->where('numero_sala', $salaInfo['numero_sala'])
+                ->where('sede', $salaInfo['sede'])
+                ->first();
+
+            if ($salaExistente) {
+                $salasCreadas[] = $salaExistente->id;
+                continue;
+            }
+
             $salaId = DB::table('sala')->insertGetId([
                 'numero_sala' => $salaInfo['numero_sala'],
                 'sede' => $salaInfo['sede'],

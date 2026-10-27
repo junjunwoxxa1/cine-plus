@@ -149,7 +149,7 @@
 
             <div class="flex justify-end gap-2 pt-4">
                 <flux:button variant="subtle" wire:click="$set('modalAbierto', false)">Cancelar</flux:button>
-                <flux:button variant="primary" type="submit">{{ $salaId ? 'Guardar Cambios' : 'Crear Sala y Butacas' }}</flux:button>
+                <flux:button variant="primary" type="submit" wire:loading.attr="disabled" wire:target="guardar">{{ $salaId ? 'Guardar Cambios' : 'Crear Sala y Butacas' }}</flux:button>
             </div>
         </form>
     </flux:modal>
