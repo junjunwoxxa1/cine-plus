@@ -91,6 +91,7 @@ Route::middleware(['auth', 'can:access-admin'])->prefix('admin')->name('admin.')
     Route::get('/inventario', \App\Livewire\Admin\Inventario::class)->name('inventario');
     Route::get('/metodos-pago', \App\Livewire\Admin\MetodosPago::class)->name('metodos-pago');
     Route::get('/peliculas', \App\Livewire\Admin\Peliculas::class)->name('peliculas');
+    Route::get('/sedes', \App\Livewire\Admin\Sedes::class)->name('sedes');
     Route::get('/funciones', \App\Livewire\Admin\Funciones::class)->name('funciones');
     Route::get('/salas', \App\Livewire\Admin\Salas::class)->name('salas');
     Route::get('/descuentos', \App\Livewire\Admin\Descuentos::class)->name('descuentos');

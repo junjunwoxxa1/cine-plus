@@ -191,4 +191,12 @@ class Sala extends Model
     {
         return $this->hasMany(Funcion::class, 'sala_id');
     }
+
+    /**
+     * Sede o complejo a la que pertenece la sala.
+     */
+    public function sedeRelacion(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Sede::class, 'sede', 'nombre');
+    }
 }

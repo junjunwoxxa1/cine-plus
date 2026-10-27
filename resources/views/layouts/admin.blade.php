@@ -36,6 +36,9 @@
                 </flux:sidebar.group>
 
                 <flux:sidebar.group heading="Cine y Cartelera" class="grid">
+                    <flux:sidebar.item icon="building-office-2" :href="route('admin.sedes')" :current="request()->routeIs('admin.sedes')" wire:navigate>
+                        Sedes
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="film" :href="route('admin.peliculas')" :current="request()->routeIs('admin.peliculas')" wire:navigate>
                         Películas
                     </flux:sidebar.item>

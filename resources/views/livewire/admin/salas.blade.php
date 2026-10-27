@@ -106,11 +106,9 @@
             <flux:field>
                 <flux:label>Sede o Cine</flux:label>
                 <flux:select wire:model="sede">
-                    <option value="Cine+ Alcázar (Miraflores)">Cine+ Alcázar (Miraflores)</option>
-                    <option value="Cine+ Mall del Sur (SJM)">Cine+ Mall del Sur (SJM)</option>
-                    <option value="Cine+ San Miguel">Cine+ San Miguel</option>
-                    <option value="Cine+ Salaverry (Jesús María)">Cine+ Salaverry (Jesús María)</option>
-                    <option value="Cine+ Norte (Independencia)">Cine+ Norte (Independencia)</option>
+                    @foreach ($sedes as $sedeItem)
+                        <option value="{{ $sedeItem }}">{{ $sedeItem }}</option>
+                    @endforeach
                 </flux:select>
                 <flux:error name="sede" />
             </flux:field>

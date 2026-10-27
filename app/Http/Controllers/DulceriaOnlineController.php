@@ -28,13 +28,17 @@ class DulceriaOnlineController extends Controller
 
         $productos = $categorias->flatMap->productos;
 
-        $sedes = Sala::query()
-            ->select('sede')
-            ->distinct()
-            ->whereNotNull('sede')
-            ->where('sede', '!=', '')
-            ->orderBy('sede')
-            ->pluck('sede');
+        $sedes = \App\Models\Sede::activas()->orderBy('nombre')->pluck('nombre');
+
+        if ($sedes->isEmpty()) {
+            $sedes = Sala::query()
+                ->select('sede')
+                ->distinct()
+                ->whereNotNull('sede')
+                ->where('sede', '!=', '')
+                ->orderBy('sede')
+                ->pluck('sede');
+        }
 
         if ($sedes->isEmpty()) {
             $sedes = collect(['Cine+ Alcázar (Miraflores)', 'Cine+ Mall del Sur (SJM)', 'Cine+ San Miguel']);

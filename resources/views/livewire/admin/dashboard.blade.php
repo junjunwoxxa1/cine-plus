@@ -15,7 +15,11 @@
     </div>
 
     <!-- Metricas Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-sm">
+            <span class="text-xs uppercase font-bold text-zinc-400 tracking-wider">Sedes</span>
+            <p class="text-3xl font-black text-white mt-1">{{ $totalSedes }}</p>
+        </div>
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-sm">
             <span class="text-xs uppercase font-bold text-zinc-400 tracking-wider">Películas</span>
             <p class="text-3xl font-black text-white mt-1">{{ $totalPeliculas }}</p>
@@ -78,6 +82,13 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
+                <a href="{{ route('admin.sedes') }}" class="p-3 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all flex items-center gap-3" wire:navigate>
+                    <span class="text-xl">🏢</span>
+                    <div>
+                        <p class="text-xs font-bold text-white">Sedes / Cines</p>
+                        <p class="text-[10px] text-zinc-400">Salas y complejos</p>
+                    </div>
+                </a>
                 <a href="{{ route('admin.categorias') }}" class="p-3 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all flex items-center gap-3" wire:navigate>
                     <span class="text-xl">🏷️</span>
                     <div>

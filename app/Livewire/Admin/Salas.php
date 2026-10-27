@@ -263,13 +263,17 @@ class Salas extends Component
 
     public function render()
     {
-        $sedes = Sala::query()
-            ->select('sede')
-            ->distinct()
-            ->whereNotNull('sede')
-            ->where('sede', '!=', '')
-            ->orderBy('sede')
-            ->pluck('sede');
+        $sedes = \App\Models\Sede::activas()->orderBy('nombre')->pluck('nombre');
+
+        if ($sedes->isEmpty()) {
+            $sedes = Sala::query()
+                ->select('sede')
+                ->distinct()
+                ->whereNotNull('sede')
+                ->where('sede', '!=', '')
+                ->orderBy('sede')
+                ->pluck('sede');
+        }
 
         return view('livewire.admin.salas', [
             'sedes' => $sedes,

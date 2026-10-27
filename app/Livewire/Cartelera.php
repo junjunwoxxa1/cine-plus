@@ -41,14 +41,18 @@ class Cartelera extends Component
 
     public function render()
     {
-        // 1. Sedes disponibles registradas en las salas
-        $sedes = Sala::query()
-            ->select('sede')
-            ->distinct()
-            ->whereNotNull('sede')
-            ->where('sede', '!=', '')
-            ->orderBy('sede')
-            ->pluck('sede');
+        // 1. Sedes disponibles registradas
+        $sedes = \App\Models\Sede::activas()->orderBy('nombre')->pluck('nombre');
+
+        if ($sedes->isEmpty()) {
+            $sedes = Sala::query()
+                ->select('sede')
+                ->distinct()
+                ->whereNotNull('sede')
+                ->where('sede', '!=', '')
+                ->orderBy('sede')
+                ->pluck('sede');
+        }
 
         // 2. Próximos 7 días para filtros por fecha estilo Cineplanet
         $diasDisponibles = collect();

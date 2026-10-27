@@ -19,6 +19,7 @@ class Dashboard extends Component
     public function render()
     {
         return view('livewire.admin.dashboard', [
+            'totalSedes' => \App\Models\Sede::count(),
             'totalPeliculas' => Pelicula::count(),
             'totalFunciones' => Funcion::count(),
             'totalSalas' => Sala::count(),

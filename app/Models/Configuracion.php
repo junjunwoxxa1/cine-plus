@@ -89,3 +89,4 @@ class Configuracion extends Model
         return $nuevoEstado;
     }
 }
+
