@@ -1,5 +1,5 @@
 <x-layouts::auth.clear title="Mis Compras & Entradas - Cine+">
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8" x-data="{ tab: '{{ session('tab') ?? ($entradasActivas->isNotEmpty() ? 'activas' : ($comprobantes->isNotEmpty() ? 'historial' : 'buscar')) }}' }">
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8" x-data="{ tab: '{{ session('tab') ?? (($queryCodigo !== '' || $queryEmail !== '') ? 'buscar' : ($entradasActivas->isNotEmpty() ? 'activas' : ($comprobantes->isNotEmpty() ? 'historial' : 'buscar'))) }}' }">
 
         {{-- Alertas de Éxito o Error --}}
         @if (session('success'))
@@ -56,8 +56,8 @@
                     </p>
                 </div>
             </div>
-            <button type="button" @click="tab = 'cancelar'" class="shrink-0 text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3.5 py-2 rounded-xl transition-all cursor-pointer">
-                Cancelar con Código &rarr;
+            <button type="button" @click="tab = 'buscar'" class="shrink-0 text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3.5 py-2 rounded-xl transition-all cursor-pointer">
+                🔍 Buscar Entrada para Cancelar &rarr;
             </button>
         </div>
 
@@ -74,7 +74,7 @@
                 :class="tab === 'historial' ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/40' : 'bg-gray-900 border-gray-800 text-gray-300 hover:bg-gray-800'"
                 class="border px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-2">
                 <span>📜 Historial & Boletas</span>
-                <span class="bg-gray-950/60 text-white text-[10px] px-2 py-0.5 rounded-full">{{ $comprobantes->count() }}</span>
+                <span class="bg-gray-950/60 text-white text-[10px] px-2 py-0.5 rounded-full">{{ $historial->count() }}</span>
             </button>
 
             <button type="button" @click="tab = 'anuladas'"
@@ -82,12 +82,6 @@
                 class="border px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-2">
                 <span>🚫 Canceladas</span>
                 <span class="bg-gray-950/60 text-white text-[10px] px-2 py-0.5 rounded-full">{{ $entradasAnuladas->count() }}</span>
-            </button>
-
-            <button type="button" @click="tab = 'cancelar'"
-                :class="tab === 'cancelar' ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/40' : 'bg-gray-900 border-gray-800 text-gray-300 hover:bg-gray-800'"
-                class="border px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-2">
-                <span>🔄 Cancelar Compra</span>
             </button>
 
             <button type="button" @click="tab = 'buscar'"
@@ -349,76 +343,115 @@
             @endif
         </div>
 
-        {{-- TAB 4: APARTADO DE CANCELACIÓN AUTOMÁTICA POR CÓDIGO --}}
-        <div x-show="tab === 'cancelar'" class="max-w-xl mx-auto space-y-6" x-transition>
-            <div class="border border-gray-800 bg-gray-900/80 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
-                <div class="text-center space-y-2">
-                    <span class="text-3xl">🔄</span>
-                    <h3 class="text-xl font-bold text-white tracking-tight">Apartado de Cancelación Automática</h3>
-                    <p class="text-xs text-gray-400">
-                        Ingresa tu código de reserva para validar el plazo de 12 horas y proceder con la liberación automática de tus entradas.
-                    </p>
-                </div>
-
-                <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 space-y-1">
-                    <p class="font-bold">⚠️ Condiciones del Plazo:</p>
-                    <ul class="list-disc list-inside space-y-0.5 text-[11px] text-zinc-300">
-                        <li>Válido con un mínimo de <strong>12 horas de anticipación</strong> al inicio de la función.</li>
-                        <li>Si compraste cuando la película está por estrenarse (menos de 12 horas), el sistema no valida la cancelación.</li>
-                        <li>Las butacas se liberan automáticamente en el mapa para otros usuarios.</li>
-                    </ul>
-                </div>
-
-                <form action="{{ route('compras.cancelar') }}" method="POST" class="space-y-4"
-                    onsubmit="return confirm('¿Estás seguro de solicitar la cancelación automática de esta compra?');">
-                    @csrf
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Código de Reserva</label>
-                        <input type="text" name="codigo_reserva" required placeholder="Ej: CP-XXXXXX"
-                            class="w-full uppercase tracking-wider border border-gray-800 rounded-xl p-3.5 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
-                    </div>
-
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Motivo de Cancelación (Opcional)</label>
-                        <textarea name="motivo" rows="2" placeholder="Ej: Cambio de planes, error en horario..."
-                            class="w-full border border-gray-800 rounded-xl p-3 text-xs bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all"></textarea>
-                    </div>
-
-                    <button type="submit"
-                        class="w-full bg-red-600 hover:bg-red-500 border border-red-500 text-white py-3.5 px-4 rounded-xl text-xs font-bold tracking-widest uppercase shadow-lg shadow-red-900/40 transition-all cursor-pointer">
-                        VALIDAR Y CANCELAR AUTOMÁTICAMENTE
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        {{-- TAB 5: BÚSQUEDA RÁPIDA DE ENTRADAS --}}
-        <div x-show="tab === 'buscar'" class="max-w-xl mx-auto space-y-6" x-transition>
+        {{-- TAB 4: BÚSQUEDA RÁPIDA DE ENTRADAS Y CANCELACIÓN DIRECTA --}}
+        <div x-show="tab === 'buscar'" class="max-w-2xl mx-auto space-y-6" x-transition>
             <div class="border border-gray-800 bg-gray-900/80 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
                 <div class="text-center space-y-2">
                     <span class="text-3xl">🔍</span>
-                    <h3 class="text-xl font-bold text-white tracking-tight">Buscar Reserva o Comprobante</h3>
-                    <p class="text-xs text-gray-400">Ingresa el código de reserva (ej: <strong>CP-829143</strong>) o tu correo para consultar tus entradas compradas.</p>
+                    <h3 class="text-xl font-bold text-white tracking-tight">Buscar Entrada o Comprobante</h3>
+                    <p class="text-xs text-gray-400">Ingresa tu código de reserva (ej: <strong>CP-829143</strong>) o tu correo para ver tu boleto y cancelarlo directamente si está dentro del plazo de 12 horas.</p>
                 </div>
 
                 <form action="{{ route('compras.buscar') }}" method="POST" class="space-y-4">
                     @csrf
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Código de Reserva o Correo Electrónico</label>
-                        <input type="text" name="criterio" required placeholder="Ej: CP-XXXXXX o tu@correo.com"
+                        <input type="text" name="criterio" required value="{{ $queryCodigo ?: $queryEmail }}" placeholder="Ej: CP-XXXXXX o tu@correo.com"
                             class="w-full uppercase tracking-wider border border-gray-800 rounded-xl p-3.5 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
                     </div>
 
                     <button type="submit"
                         class="w-full bg-red-600 hover:bg-red-500 border border-red-500 text-white py-3.5 px-4 rounded-xl text-xs font-bold tracking-widest uppercase shadow-lg shadow-red-900/40 transition-all cursor-pointer">
-                        CONSULTAR COMPROBANTE
+                        BUSCAR TICKET DE ENTRADA
                     </button>
                 </form>
 
-                <div class="border border-dashed border-gray-800 rounded-xl p-4 bg-gray-950/40 text-xs text-gray-400 text-center">
-                    💡 Si compraste como invitado sin registrarte, tu código de reserva fue mostrado en la pantalla de confirmación.
+                <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300/90 flex items-start gap-2.5">
+                    <span class="text-base">🛡️</span>
+                    <div>
+                        <strong class="font-bold">Cancelación directa:</strong> Si buscas tu entrada y faltan más de 12 horas para la función, encontrarás un botón directo para cancelar la compra y liberar tus asientos de inmediato sin trámites adicionales.
+                    </div>
                 </div>
             </div>
+
+            {{-- Resultados de Búsqueda Directa --}}
+            @if ($queryCodigo !== '' || $queryEmail !== '')
+                <div class="space-y-4 pt-2">
+                    <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                            <span>🎟️ Resultado de la Búsqueda</span>
+                            <span class="text-xs text-gray-400">({{ $queryCodigo ?: $queryEmail }})</span>
+                        </h4>
+                        <a href="{{ route('compras.index') }}" class="text-xs text-red-400 hover:text-red-300 font-bold">Limpiar búsqueda</a>
+                    </div>
+
+                    @forelse ($comprobantes as $c)
+                        @php
+                            $puedeCancelar = $c->puedeCancelar();
+                            $horasRestantes = $c->horasHastaFuncion();
+                        @endphp
+                        <div class="border border-gray-800 bg-gray-900/90 rounded-2xl p-5 space-y-4 shadow-xl">
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800/80 pb-3">
+                                <div>
+                                    <span class="text-xs font-mono text-gray-400">Reserva: <strong class="text-white">#{{ $c->codigo_reserva }}</strong></span>
+                                    <h4 class="text-lg font-black text-white mt-0.5">{{ $c->pelicula_titulo }}</h4>
+                                </div>
+                                <div>
+                                    @if ($c->estado === 'anulado')
+                                        <span class="bg-red-600/20 text-red-400 border border-red-500/30 text-[10px] font-bold uppercase px-2.5 py-1 rounded-md">Cancelada / Anulada</span>
+                                    @elseif ($puedeCancelar)
+                                        <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase px-2.5 py-1 rounded-md">⏱️ Cancelable ({{ $horasRestantes }}h rest.)</span>
+                                    @else
+                                        <span class="bg-zinc-800 text-zinc-400 border border-zinc-700 text-[10px] font-bold uppercase px-2.5 py-1 rounded-md">🔒 No cancelable (< 12h)</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                <div class="bg-gray-950/60 p-2.5 rounded-lg border border-gray-800">
+                                    <span class="text-[10px] text-gray-400 block uppercase font-bold">Sede / Sala</span>
+                                    <strong class="text-white truncate block">{{ $c->sede ?? 'Sede Principal' }} • Sala {{ $c->sala }}</strong>
+                                </div>
+                                <div class="bg-gray-950/60 p-2.5 rounded-lg border border-gray-800">
+                                    <span class="text-[10px] text-gray-400 block uppercase font-bold">Fecha / Hora</span>
+                                    <strong class="text-white block">{{ $c->fecha_funcion ? $c->fecha_funcion->format('d/m/Y H:i') : '-' }}</strong>
+                                </div>
+                                <div class="bg-gray-950/60 p-2.5 rounded-lg border border-gray-800">
+                                    <span class="text-[10px] text-gray-400 block uppercase font-bold">Butacas</span>
+                                    <strong class="text-white truncate block">{{ $c->asientos_texto }}</strong>
+                                </div>
+                                <div class="bg-gray-950/60 p-2.5 rounded-lg border border-gray-800">
+                                    <span class="text-[10px] text-gray-400 block uppercase font-bold">Total Pagado</span>
+                                    <strong class="text-green-400 block">S/ {{ number_format($c->total, 2) }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-gray-800/80">
+                                <a href="{{ route('pago.comprobante', $c->codigo_reserva) }}"
+                                    class="bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs uppercase px-4 py-2 rounded-xl transition-colors">
+                                    Ver Boleto & QR &rarr;
+                                </a>
+
+                                @if ($puedeCancelar)
+                                    <form action="{{ route('compras.cancelar') }}" method="POST"
+                                        onsubmit="return confirm('¿Confirmas que deseas cancelar tu compra #{{ $c->codigo_reserva }}? Se liberarán inmediatamente tus butacas.');">
+                                        @csrf
+                                        <input type="hidden" name="codigo_reserva" value="{{ $c->codigo_reserva }}">
+                                        <button type="submit"
+                                            class="bg-red-950/80 hover:bg-red-900 text-red-300 hover:text-white border border-red-700/80 font-bold text-xs uppercase px-4 py-2 rounded-xl transition-colors cursor-pointer shadow-lg">
+                                            ❌ Cancelar Compra Directamente
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="p-6 text-center border border-dashed border-gray-800 rounded-2xl text-xs text-gray-400 bg-gray-950/40">
+                            No se encontró ningún comprobante con los datos ingresados.
+                        </div>
+                    @endforelse
+                </div>
+            @endif
         </div>
 
     </main>

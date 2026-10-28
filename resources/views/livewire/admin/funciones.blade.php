@@ -765,7 +765,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <flux:field>
                     <flux:label>Cine y Sala</flux:label>
-                    <select wire:model="sala_id" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-sm text-zinc-200" required>
+                    <select wire:model.live="sala_id" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-sm text-zinc-200" required>
                         <option value="">Selecciona sala</option>
                         @foreach ($todasLasSalas->groupBy('sede') as $sedeGrupo => $salasDelGrupo)
                             <optgroup label="📍 {{ $sedeGrupo }}">
@@ -780,10 +780,50 @@
 
                 <flux:field>
                     <flux:label>Fecha y Hora Principal</flux:label>
-                    <flux:input type="datetime-local" wire:model="fecha_hora" required />
+                    <flux:input type="datetime-local" wire:model.live="fecha_hora" required />
                     <flux:error name="fecha_hora" />
+
+                    @php
+                        $ocupadosHorasArray = $horariosOcupadosModal->map(fn ($f) => $f->fecha_hora->format('H:i'))->toArray();
+                        $horaActualInput = '';
+                        try {
+                            $horaActualInput = !empty($fecha_hora) ? \Carbon\Carbon::parse($fecha_hora)->format('H:i') : '';
+                        } catch (\Exception $e) {}
+                        $tieneConflicto = $horaActualInput !== '' && in_array($horaActualInput, $ocupadosHorasArray, true);
+                    @endphp
+
+                    @if ($tieneConflicto)
+                        <div class="text-[11px] font-bold text-red-400 bg-red-950/80 border border-red-600 rounded-lg p-2 mt-1.5 flex items-center gap-1.5 shadow-md">
+                            <span>⛔</span>
+                            <span>¡Atención! El horario {{ $horaActualInput }} ya está creado en esta sala. Elige otro horario para evitar duplicados.</span>
+                        </div>
+                    @endif
                 </flux:field>
             </div>
+
+            {{-- HORARIOS YA CREADOS EN ROJO PARA SABER QUE NO ESTÁN DISPONIBLES --}}
+            @if ($horariosOcupadosModal->isNotEmpty())
+                <div class="bg-red-950/40 border border-red-600/70 rounded-xl p-3.5 space-y-2 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-red-300 flex items-center gap-1.5">
+                            <span>⛔</span>
+                            <span>Horarios ya creados en esta sala para este día (EN ROJO = NO DISPONIBLES):</span>
+                        </span>
+                        <span class="text-[10px] text-red-400 font-mono font-bold bg-red-950 px-2 py-0.5 rounded border border-red-800">
+                            {{ $horariosOcupadosModal->count() }} horario(s) ocupado(s)
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-0.5">
+                        @foreach ($horariosOcupadosModal as $fOcupada)
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-900/80 border border-red-500 text-xs font-mono font-bold text-white shadow-md">
+                                <span>🕒 {{ $fOcupada->fecha_hora->format('H:i') }} hrs</span>
+                                <span class="text-[11px] font-sans font-normal text-red-200">({{ $fOcupada->pelicula->titulo }})</span>
+                                <span class="bg-red-950 text-red-300 text-[10px] px-1.5 py-0.5 rounded border border-red-700 font-sans font-bold uppercase">Ya Creado</span>
+                            </span>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             <flux:field>
                 <flux:label>🪜 Plantilla de Forma de Butacas y Escaleras</flux:label>
@@ -800,13 +840,28 @@
                 <div class="bg-zinc-950/80 border border-zinc-800 rounded-xl p-3.5 space-y-2.5">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-zinc-300">⚡ ¿Agregar más horarios el mismo día en esta sala? (Opcional)</span>
+                        <span class="text-[11px] text-zinc-500">Horarios en rojo ya están ocupados</span>
                     </div>
                     <div class="flex flex-wrap gap-1.5">
+                        @php
+                            $ocupadosHoras = $horariosOcupadosModal->map(fn ($f) => $f->fecha_hora->format('H:i'))->toArray();
+                        @endphp
                         @foreach (['14:30', '16:15', '17:45', '19:15', '20:30', '22:15'] as $horaSugerida)
-                            <button type="button" wire:click="agregarHorarioExtra('{{ $horaSugerida }}')"
-                                class="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-mono text-zinc-300 hover:text-white cursor-pointer">
-                                + {{ $horaSugerida }}
-                            </button>
+                            @php
+                                $estaOcupadoSugerido = in_array($horaSugerida, $ocupadosHoras, true);
+                            @endphp
+                            @if ($estaOcupadoSugerido)
+                                <button type="button" disabled title="Este horario ya está creado y ocupado en esta sala"
+                                    class="px-2.5 py-1 rounded-lg bg-red-950/90 border border-red-500 text-xs font-mono font-bold text-red-300 opacity-90 cursor-not-allowed flex items-center gap-1 shadow-sm">
+                                    <span>⛔</span>
+                                    <span>{{ $horaSugerida }} (Ocupado)</span>
+                                </button>
+                            @else
+                                <button type="button" wire:click="agregarHorarioExtra('{{ $horaSugerida }}')"
+                                    class="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-mono text-zinc-300 hover:text-white cursor-pointer">
+                                    + {{ $horaSugerida }}
+                                </button>
+                            @endif
                         @endforeach
                     </div>
 

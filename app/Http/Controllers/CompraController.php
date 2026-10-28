@@ -43,12 +43,20 @@ class CompraController extends Controller
 
         $comprobantes = $comprobantesQuery->get();
 
-        // Entradas activas (función vigente no vencida y estado pagado)
+        // Entradas activas: vigentes según su día y horario de función
         $ahora = now();
         $entradasActivas = $comprobantes->filter(function ($c) use ($ahora) {
-            return $c->estado === 'pagado'
-                && $c->fecha_funcion
-                && $c->fecha_funcion->isAfter($ahora->copy()->subHours(3));
+            if ($c->estado !== 'pagado') {
+                return false;
+            }
+
+            if ($c->fecha_funcion) {
+                // Permanece activa mientras no haya pasado el día y el horario de la función (con margen de 3 horas de duración)
+                return $c->fecha_funcion->copy()->addHours(3)->isAfter($ahora);
+            }
+
+            // Compras de dulcería sin función: activa durante el día de la compra
+            return $c->created_at && $c->created_at->isToday();
         });
 
         // Entradas canceladas / anuladas
@@ -56,7 +64,7 @@ class CompraController extends Controller
             return $c->estado === 'anulado';
         });
 
-        // Historial de compras pasadas
+        // Historial de compras pasadas (cuyo día y horario ya pasaron)
         $historial = $comprobantes->reject(function ($c) use ($entradasActivas, $entradasAnuladas) {
             return $entradasActivas->contains('id', $c->id) || $entradasAnuladas->contains('id', $c->id);
         });
@@ -81,19 +89,11 @@ class CompraController extends Controller
         ]);
 
         $criterio = trim($validated['criterio']);
+        $paramKey = filter_var($criterio, FILTER_VALIDATE_EMAIL) ? 'email' : 'codigo';
 
-        // Si es código de reserva (ej: CP-XXXXXX)
-        if (str_starts_with(strtoupper($criterio), 'CP-') || strlen($criterio) <= 12) {
-            $comprobante = Comprobante::where('codigo_reserva', strtoupper($criterio))->first();
-            if ($comprobante) {
-                return redirect()->route('pago.comprobante', $comprobante->codigo_reserva);
-            }
-        }
-
-        // Búsqueda por email o código
         return redirect()->route('compras.index', [
-            filter_var($criterio, FILTER_VALIDATE_EMAIL) ? 'email' : 'codigo' => $criterio,
-        ]);
+            $paramKey => $criterio,
+        ])->with('info_busqueda', "Búsqueda completada para: {$criterio}");
     }
 
     /**

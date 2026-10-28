@@ -80,16 +80,23 @@ class PagoController extends Controller
         $puntosSeparadosActivo = \App\Models\Configuracion::puntosSeparadosActivo();
 
         if ($puntosSeparadosActivo) {
-            // 1. Canje de Puntos de Cine para Entradas (50 pts = 100% descuento en entradas)
+            // 1. Canje de Puntos de Cine para Entradas (50 pts = descuenta el valor de 1 entrada)
             if ($request->boolean('canjear_puntos_cine') || $request->boolean('canjear_puntos')) {
                 $ptsCine = (int) ($user?->puntos_cine ?? 0);
                 $ptsTotal = (int) ($user?->saldo_puntos ?? 0);
+                $ptsDisponibles = max($ptsCine, $ptsTotal);
 
-                if ($user && ($ptsCine >= 50 || $ptsTotal >= 50)) {
-                    $montoDescuento += $subtotalEntradas;
-                    $descuentoConcepto = 'Canje de Entradas (50 Puntos Cine)';
+                $maxCanjeables = min((int) $reserva['cantidad'], (int) floor($ptsDisponibles / 50));
+                $entradasCanje = max(1, min((int) $request->input('entradas_canje_puntos', 1), $maxCanjeables));
+
+                if ($user && $maxCanjeables >= 1) {
+                    $descCanje = (float) ($funcion->precio * $entradasCanje);
+                    $montoDescuento += min($descCanje, $subtotalEntradas);
+                    $puntosUtilizadosCine = 50 * $entradasCanje;
+                    $descuentoConcepto = $entradasCanje > 1
+                        ? "Canje de {$entradasCanje} Entradas ({$puntosUtilizadosCine} Puntos Cine)"
+                        : 'Canje de 1 Entrada (50 Puntos Cine)';
                     $esCanjeCine = true;
-                    $puntosUtilizadosCine = 50;
                 }
             }
 
@@ -109,12 +116,19 @@ class PagoController extends Controller
                 }
             }
         } else {
-            // Modo Unificado Estándar (50 pts del Club Cine+ para entradas)
+            // Modo Unificado Estándar (50 pts del Club Cine+ por cada 1 entrada)
             if ($request->boolean('canjear_puntos') || $request->boolean('canjear_puntos_cine')) {
                 $ptsTotal = (int) ($user?->saldo_puntos ?? 0);
-                if ($user && $ptsTotal >= 50) {
-                    $montoDescuento += $subtotalEntradas;
-                    $descuentoConcepto = 'Canje de Entradas con Club Cine+ (50 pts)';
+                $maxCanjeables = min((int) $reserva['cantidad'], (int) floor($ptsTotal / 50));
+                $entradasCanje = max(1, min((int) $request->input('entradas_canje_puntos', 1), $maxCanjeables));
+
+                if ($user && $maxCanjeables >= 1) {
+                    $descCanje = (float) ($funcion->precio * $entradasCanje);
+                    $montoDescuento += min($descCanje, $subtotalEntradas);
+                    $puntosUtilizadosCine = 50 * $entradasCanje;
+                    $descuentoConcepto = $entradasCanje > 1
+                        ? "Canje de {$entradasCanje} Entradas ({$puntosUtilizadosCine} pts)"
+                        : 'Canje de 1 Entrada con Club Cine+ (50 pts)';
                     $esCanjePuntos = true;
                 }
             }
@@ -198,8 +212,8 @@ class PagoController extends Controller
                         $user->descontarPuntosDulceria($puntosUtilizadosDulceria);
                     }
                 } else {
-                    if ($esCanjePuntos) {
-                        $user->descontarPuntosGeneral(50);
+                    if ($esCanjePuntos && $puntosUtilizadosCine > 0) {
+                        $user->descontarPuntosGeneral($puntosUtilizadosCine);
                     }
                 }
             }
@@ -247,7 +261,7 @@ class PagoController extends Controller
                 'precio_unitario' => (float) $funcion->precio,
                 'subtotal' => $subtotalEntradas,
                 'es_canje' => $esCanjeCine || $esCanjePuntos,
-                'puntos_utilizados' => $esCanjeCine ? $puntosUtilizadosCine : ($esCanjePuntos ? 50 : 0),
+                'puntos_utilizados' => ($esCanjeCine || $esCanjePuntos) ? $puntosUtilizadosCine : 0,
             ]);
 
             // Detalles de Dulcería / Snacks

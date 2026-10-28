@@ -205,19 +205,31 @@
                         {{-- Opciones de Canje Individuales por Separado --}}
                         <div class="space-y-3 pt-1">
                             {{-- Canje de Entradas con Puntos Cine --}}
-                            <label class="flex items-center justify-between border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl cursor-pointer transition-colors"
-                                   :class="(puntosCine < 50 && puntosUsuario < 50) ? 'opacity-50 cursor-not-allowed' : (canjearPuntosCine ? 'border-red-500 bg-red-950/20' : '')">
-                                <div class="flex items-center space-x-3">
-                                    <input type="checkbox" name="canjear_puntos_cine" value="1" x-model="canjearPuntosCine" @change="alCambiarCanjeCine()"
-                                        :disabled="puntosCine < 50 && puntosUsuario < 50"
-                                        class="w-4 h-4 rounded border-gray-700 text-red-600 focus:ring-red-500 bg-gray-950 cursor-pointer">
-                                    <div>
-                                        <span class="text-xs font-bold text-gray-200 block">🎟️ Canjear Entradas de Cine (50 pts Cine)</span>
-                                        <span class="text-[11px] text-gray-400">Descuenta el 100% del subtotal de tus entradas usando tus puntos de cine</span>
+                            <div class="border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl transition-colors"
+                                 :class="(puntosCine < 50 && puntosUsuario < 50) ? 'opacity-50' : (canjearPuntosCine ? 'border-red-500 bg-red-950/20' : '')">
+                                <label class="flex items-center justify-between cursor-pointer">
+                                    <div class="flex items-center space-x-3">
+                                        <input type="checkbox" name="canjear_puntos_cine" value="1" x-model="canjearPuntosCine" @change="alCambiarCanjeCine()"
+                                            :disabled="puntosCine < 50 && puntosUsuario < 50"
+                                            class="w-4 h-4 rounded border-gray-700 text-red-600 focus:ring-red-500 bg-gray-950 cursor-pointer">
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-200 block">🎟️ Canjear Entradas de Cine (50 pts por entrada)</span>
+                                            <span class="text-[11px] text-gray-400">Descuenta el valor de 1 entrada (S/ {{ number_format($funcion->precio, 2) }}) por cada 50 puntos</span>
+                                        </div>
                                     </div>
+                                    <span class="text-xs font-bold text-red-400 font-mono" x-show="canjearPuntosCine" x-text="'- S/ ' + (entradasCanje * precioUnitario).toFixed(2)"></span>
+                                </label>
+
+                                <div x-show="canjearPuntosCine && cantidadEntradas > 1 && maxCanjeables() > 1" class="mt-2.5 pt-2 border-t border-gray-800/80 pl-7 flex items-center justify-between gap-3 text-xs" x-cloak>
+                                    <span class="text-gray-300 font-medium">Entradas a pagar con puntos:</span>
+                                    <select name="entradas_canje_puntos" x-model.number="entradasCanje" @change="calcularTotales()"
+                                        class="bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white font-bold outline-none">
+                                        <template x-for="i in maxCanjeables()" :key="i">
+                                            <option :value="i" x-text="i + ' entrada' + (i > 1 ? 's' : '') + ' (' + (i * 50) + ' pts)'"></option>
+                                        </template>
+                                    </select>
                                 </div>
-                                <span class="text-xs font-bold text-red-400" x-show="canjearPuntosCine">- 100% Entradas</span>
-                            </label>
+                            </div>
 
                             {{-- Canje de Dulcería con Puntos Dulcería --}}
                             @if ($montoDulceria > 0)
@@ -239,19 +251,31 @@
                     @else
                         {{-- Modo Unificado Estándar --}}
                         <div class="space-y-3 pt-1">
-                            <label class="flex items-center justify-between border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl cursor-pointer transition-colors"
-                                   :class="puntosUsuario < 50 ? 'opacity-50 cursor-not-allowed' : (canjearPuntos ? 'border-amber-500 bg-amber-950/20' : '')">
-                                <div class="flex items-center space-x-3">
-                                    <input type="checkbox" name="canjear_puntos" value="1" x-model="canjearPuntos" @change="alCambiarCanjePuntos()"
-                                        :disabled="puntosUsuario < 50"
-                                        class="w-4 h-4 rounded border-gray-700 text-amber-500 focus:ring-amber-500 bg-gray-950 cursor-pointer">
-                                    <div>
-                                        <span class="text-xs font-bold text-gray-200 block">⭐ Canjear Entradas con Club Cine+ (50 Puntos)</span>
-                                        <span class="text-[11px] text-gray-400">Descuenta el 100% del subtotal de tus entradas usando tus puntos acumulados</span>
+                            <div class="border border-gray-800 bg-gray-950/40 hover:bg-gray-900 p-3.5 rounded-xl transition-colors"
+                                 :class="puntosUsuario < 50 ? 'opacity-50' : (canjearPuntos ? 'border-amber-500 bg-amber-950/20' : '')">
+                                <label class="flex items-center justify-between cursor-pointer">
+                                    <div class="flex items-center space-x-3">
+                                        <input type="checkbox" name="canjear_puntos" value="1" x-model="canjearPuntos" @change="alCambiarCanjePuntos()"
+                                            :disabled="puntosUsuario < 50"
+                                            class="w-4 h-4 rounded border-gray-700 text-amber-500 focus:ring-amber-500 bg-gray-950 cursor-pointer">
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-200 block">⭐ Canjear Entradas con Club Cine+ (50 Puntos por entrada)</span>
+                                            <span class="text-[11px] text-gray-400">Descuenta el valor de 1 entrada (S/ {{ number_format($funcion->precio, 2) }}) por cada 50 puntos</span>
+                                        </div>
                                     </div>
+                                    <span class="text-xs font-bold text-amber-400 font-mono" x-show="canjearPuntos" x-text="'- S/ ' + (entradasCanje * precioUnitario).toFixed(2)"></span>
+                                </label>
+
+                                <div x-show="canjearPuntos && cantidadEntradas > 1 && maxCanjeables() > 1" class="mt-2.5 pt-2 border-t border-gray-800/80 pl-7 flex items-center justify-between gap-3 text-xs" x-cloak>
+                                    <span class="text-gray-300 font-medium">Entradas a pagar con puntos:</span>
+                                    <select name="entradas_canje_puntos" x-model.number="entradasCanje" @change="calcularTotales()"
+                                        class="bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white font-bold outline-none">
+                                        <template x-for="i in maxCanjeables()" :key="i">
+                                            <option :value="i" x-text="i + ' entrada' + (i > 1 ? 's' : '') + ' (' + (i * 50) + ' pts)'"></option>
+                                        </template>
+                                    </select>
                                 </div>
-                                <span class="text-xs font-bold text-amber-400" x-show="canjearPuntos">- 100% Entradas</span>
-                            </label>
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -436,9 +460,15 @@
                 canjearPuntosCine: false,
                 canjearPuntosDulceria: false,
                 canjearPuntos: false,
+                entradasCanje: 1,
                 subtotalEntradas: 0,
                 montoDescuento: 0,
                 total: 0,
+
+                maxCanjeables() {
+                    const pts = Math.max(this.puntosCine, this.puntosUsuario);
+                    return Math.max(1, Math.min(this.cantidadEntradas, Math.floor(pts / 50)));
+                },
 
                 init() {
                     this.subtotalEntradas = this.precioUnitario * this.cantidadEntradas;
@@ -507,8 +537,11 @@
                     let descEntradas = 0;
                     let descDulceria = 0;
 
-                    if ((this.canjearPuntosCine || this.canjearPuntos) && (this.puntosCine >= 50 || this.puntosUsuario >= 50)) {
-                        descEntradas = this.subtotalEntradas;
+                    const canjeActivo = (this.canjearPuntosCine || this.canjearPuntos) && (this.puntosCine >= 50 || this.puntosUsuario >= 50);
+                    if (canjeActivo) {
+                        const maxC = this.maxCanjeables();
+                        this.entradasCanje = Math.max(1, Math.min(this.entradasCanje || 1, maxC));
+                        descEntradas = this.entradasCanje * this.precioUnitario;
                     } else if (this.descuentoId) {
                         const d = this.descuentosData.find(item => item.id == this.descuentoId);
                         if (d) {

@@ -838,6 +838,22 @@ class Funciones extends Component
             }
         }
 
+        // Horarios ya creados/ocupados en la sala seleccionada para la fecha actual del modal
+        $horariosOcupadosModal = collect();
+        if ($this->modalAbierto && $this->sala_id && $this->fecha_hora !== '') {
+            try {
+                $fechaDiaModal = Carbon::parse($this->fecha_hora)->format('Y-m-d');
+                $horariosOcupadosModal = Funcion::with('pelicula')
+                    ->where('sala_id', $this->sala_id)
+                    ->whereDate('fecha_hora', $fechaDiaModal)
+                    ->when($this->funcionId, fn ($q) => $q->where('id', '!=', $this->funcionId))
+                    ->orderBy('fecha_hora', 'asc')
+                    ->get();
+            } catch (\Exception $e) {
+                // Formato de fecha en edición
+            }
+        }
+
         return view('livewire.admin.funciones', [
             'funcionesPaginadas' => (clone $query)->orderBy('fecha_hora', 'asc')->paginate(15),
             'totalFuncionesFiltradas' => $funcionesColeccion->count(),
@@ -853,6 +869,7 @@ class Funciones extends Component
             'funcionActivaButacas' => $funcionActivaButacas,
             'butacasPorFilaModal' => $butacasPorFilaModal,
             'mapaConfigModal' => $mapaConfigModal,
+            'horariosOcupadosModal' => $horariosOcupadosModal,
         ]);
     }
 }

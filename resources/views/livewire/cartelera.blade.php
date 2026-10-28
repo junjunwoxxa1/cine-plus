@@ -69,8 +69,12 @@
                                             </p>
                                         </div>
                                     </button>
-
-                                    <a href="{{ route('peliculas.show', $sug) }}" 
+                                    @php
+                                        $paramsSug = ['pelicula' => $sug->slug];
+                                        if ($sede !== 'all') { $paramsSug['sede'] = $sede; }
+                                        if ($dia !== 'all') { $paramsSug['dia'] = $dia; }
+                                    @endphp
+                                    <a href="{{ route('peliculas.show', $paramsSug) }}"
                                         class="shrink-0 text-[11px] font-bold bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 px-3 py-1.5 rounded-xl transition-all">
                                         Ver »
                                     </a>
@@ -178,7 +182,12 @@
     {{-- Grid de Películas en Cartelera (2 columnas en móvil estilo App Cineplanet) --}}
     <div class="relative z-0 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
         @forelse ($peliculas as $pelicula)
-            <a href="{{ route('peliculas.show', $pelicula) }}"
+            @php
+                $paramsShow = ['pelicula' => $pelicula->slug];
+                if ($sede !== 'all') { $paramsShow['sede'] = $sede; }
+                if ($dia !== 'all') { $paramsShow['dia'] = $dia; }
+            @endphp
+            <a href="{{ route('peliculas.show', $paramsShow) }}"
                 class="bg-gray-900/70 border border-gray-800 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col justify-between hover:border-red-500/50 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-red-950/20 hover:-translate-y-1.5 group cursor-pointer"
                 wire:key="pelicula-{{ $pelicula->id }}">
 
