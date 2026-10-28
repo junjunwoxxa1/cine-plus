@@ -49,6 +49,7 @@ Route::get('/pago/comprobante/{codigo}/pdf', [PagoController::class, 'descargarP
 // Mis Compras (Entradas y Comprobantes de Clientes)
 Route::get('/mis-compras', [CompraController::class, 'index'])->name('compras.index');
 Route::post('/mis-compras/buscar', [CompraController::class, 'buscar'])->name('compras.buscar');
+Route::post('/mis-compras/cancelar', [CompraController::class, 'cancelar'])->name('compras.cancelar');
 
 // Recuperación de Cuenta y Llave de Acceso sin Contraseña por Token de 6 Dígitos
 Route::middleware('guest')->group(function () {

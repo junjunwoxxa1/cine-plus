@@ -137,5 +137,68 @@ class Comprobante extends Model
     {
         return sprintf('%s-%s', $this->serie, $this->numero);
     }
+
+    /**
+     * Determina si la compra puede ser cancelada automáticamente por el cliente.
+     * Regla: Debe ser con al menos 12 horas de anticipación al inicio de la función.
+     * Si la compra es para una función que se estrena en menos de 12 horas, no es cancelable.
+     */
+    public function puedeCancelar(): bool
+    {
+        if ($this->estado !== 'pagado') {
+            return false;
+        }
+
+        if (! $this->fecha_funcion) {
+            // Compras sin función (ej. dulcería directa): permitidas dentro de las primeras 12 horas de creada
+            return $this->created_at && $this->created_at->diffInHours(now(), false) <= 12;
+        }
+
+        // Requiere al menos 12 horas antes del inicio de la función
+        return now()->diffInMinutes($this->fecha_funcion, false) >= (12 * 60);
+    }
+
+    /**
+     * Calcula las horas restantes hasta el inicio de la función.
+     */
+    public function horasHastaFuncion(): ?float
+    {
+        if (! $this->fecha_funcion) {
+            return null;
+        }
+
+        return round(now()->diffInMinutes($this->fecha_funcion, false) / 60, 1);
+    }
+
+    /**
+     * Retorna el motivo por el cual la compra no puede ser cancelada.
+     */
+    public function motivoNoCancelable(): ?string
+    {
+        if ($this->estado === 'anulado') {
+            return 'Esta compra ya se encuentra cancelada / anulada.';
+        }
+
+        if ($this->estado !== 'pagado') {
+            return 'La compra no se encuentra en estado pagado.';
+        }
+
+        if ($this->fecha_funcion) {
+            $horasRestantes = now()->diffInMinutes($this->fecha_funcion, false) / 60;
+
+            if ($horasRestantes <= 0) {
+                return 'La función ya se llevó a cabo o se encuentra en curso.';
+            }
+
+            if ($horasRestantes < 12) {
+                return sprintf(
+                    'No se puede cancelar esta compra. Faltan %.1f hrs para la función. La política exige un mínimo de 12 horas de anticipación (funciones próximas o estreno inmediato no aplican para cancelación).',
+                    max(0, $horasRestantes)
+                );
+            }
+        }
+
+        return null;
+    }
 }
 

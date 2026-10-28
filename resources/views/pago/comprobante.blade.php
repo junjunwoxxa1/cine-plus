@@ -30,20 +30,43 @@
                     class="bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-colors">
                     Nueva Compra
                 </a>
+                @if ($comprobante->puedeCancelar())
+                    <form action="{{ route('compras.cancelar') }}" method="POST"
+                        onsubmit="return confirm('¿Confirmas que deseas cancelar esta compra? Se liberarán tus asientos y se anulará la entrada automáticamente.');" class="inline">
+                        @csrf
+                        <input type="hidden" name="codigo_reserva" value="{{ $comprobante->codigo_reserva }}">
+                        <button type="submit"
+                            class="bg-red-950/80 hover:bg-red-900 text-red-300 hover:text-white border border-red-700/80 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-colors cursor-pointer shadow-lg">
+                            ❌ Cancelar Compra
+                        </button>
+                    </form>
+                @endif
             </div>
         </div>
 
-        {{-- Banner de Confirmación Exitosa (Oculto en Impresión para garantizar 1 sola página) --}}
-        <div class="border border-green-500/40 bg-green-950/30 rounded-2xl p-6 text-center space-y-2 shadow-2xl print:hidden">
-            <div class="w-12 h-12 bg-green-600/20 text-green-400 rounded-full flex items-center justify-center mx-auto border border-green-500/40">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                </svg>
+        @if ($comprobante->estado === 'anulado')
+            {{-- Banner de Anulación --}}
+            <div class="border border-red-500/50 bg-red-950/40 rounded-2xl p-6 text-center space-y-2 shadow-2xl print:border-black print:bg-white print:text-black">
+                <div class="w-12 h-12 bg-red-600/20 text-red-400 rounded-full flex items-center justify-center mx-auto border border-red-500/40">
+                    <span class="text-xl">🚫</span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-black text-red-400 tracking-tight">Comprobante y Entrada Anulada</h1>
+                <p class="text-sm text-red-300 font-medium">Esta compra ha sido cancelada. Las butacas han sido liberadas automáticamente y la entrada no es válida para el ingreso.</p>
+                <p class="text-xs text-gray-400 pt-1">Código de Reserva: <strong class="text-white font-mono text-sm tracking-wider">#{{ $comprobante->codigo_reserva }}</strong></p>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">¡Pago Confirmado con Éxito!</h1>
-            <p class="text-sm text-green-300 font-medium">Tu entrada digital ha sido generada. Presenta el código QR directamente en el acceso a la sala.</p>
-            <p class="text-xs text-gray-400 pt-1">Código de Reserva: <strong class="text-white font-mono text-sm tracking-wider">#{{ $comprobante->codigo_reserva }}</strong></p>
-        </div>
+        @else
+            {{-- Banner de Confirmación Exitosa (Oculto en Impresión para garantizar 1 sola página) --}}
+            <div class="border border-green-500/40 bg-green-950/30 rounded-2xl p-6 text-center space-y-2 shadow-2xl print:hidden">
+                <div class="w-12 h-12 bg-green-600/20 text-green-400 rounded-full flex items-center justify-center mx-auto border border-green-500/40">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">¡Pago Confirmado con Éxito!</h1>
+                <p class="text-sm text-green-300 font-medium">Tu entrada digital ha sido generada. Presenta el código QR directamente en el acceso a la sala.</p>
+                <p class="text-xs text-gray-400 pt-1">Código de Reserva: <strong class="text-white font-mono text-sm tracking-wider">#{{ $comprobante->codigo_reserva }}</strong></p>
+            </div>
+        @endif
 
         {{-- TICKET DE ENTRADA ESTILO CINEPLANET (Con Perforación Central) --}}
         <div class="border border-gray-800 bg-gray-900/90 rounded-3xl overflow-hidden shadow-2xl print:border-black print:bg-white print:text-black print:shadow-none">
