@@ -43,23 +43,6 @@
             @endauth
         </div>
 
-        {{-- Banner Informativo: Política de Cancelación en 12 Horas --}}
-        <div class="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-            <div class="flex items-start sm:items-center gap-3.5">
-                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-lg shrink-0">
-                    🛡️
-                </div>
-                <div>
-                    <h4 class="text-xs sm:text-sm font-bold text-white">Política de Cancelación Automática (Plazo de 12 Horas)</h4>
-                    <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 leading-relaxed">
-                        Puedes cancelar tus entradas y compras con al menos <strong>12 horas de anticipación</strong> al inicio de la función. Si compras cuando la película se va a estrenar o faltan menos de 12 horas, <strong>no aplica cancelación</strong>. Al anular, las butacas se liberan automáticamente en tiempo real.
-                    </p>
-                </div>
-            </div>
-            <button type="button" @click="tab = 'buscar'" class="shrink-0 text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3.5 py-2 rounded-xl transition-all cursor-pointer">
-                🔍 Buscar Entrada para Cancelar &rarr;
-            </button>
-        </div>
 
         {{-- Selector de Pestañas / Tabs --}}
         <div class="flex flex-wrap gap-2 border-b border-gray-800 pb-3">
@@ -174,8 +157,10 @@
 
                         {{-- QR Preview y Botones de Acción --}}
                         <div class="md:col-span-4 p-6 flex flex-col items-center justify-center text-center space-y-3 bg-gray-950/40">
-                            <div class="bg-white p-2.5 rounded-2xl shadow-xl max-w-[140px] border border-gray-200">
-                                {!! $c->qr_svg !!}
+                            <div class="bg-white p-3 rounded-2xl shadow-xl w-36 h-36 flex items-center justify-center border border-gray-200 overflow-hidden shrink-0">
+                                <div class="w-full h-full flex items-center justify-center">
+                                    {!! $c->qr_svg !!}
+                                </div>
                             </div>
                             <div class="space-y-0.5">
                                 <span class="text-[10px] font-black uppercase text-red-400 tracking-wider block">CÓDIGO DE INGRESO</span>

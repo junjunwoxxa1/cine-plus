@@ -77,43 +77,61 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN DE HORARIOS Y FUNCIONES DISPONIBLES CON FILTROS -->
-                <div class="bg-gray-900/80 border border-gray-800 rounded-3xl p-5 sm:p-7 space-y-6 shadow-2xl">
+                <!-- SECCIÓN DE HORARIOS Y FUNCIONES DISPONIBLES CON FILTRADO EN TIEMPO REAL -->
+                <div class="bg-gray-900/80 border border-gray-800 rounded-3xl p-5 sm:p-7 space-y-6 shadow-2xl"
+                    x-data="{
+                        sedeActiva: '{{ $filtroSede ?: 'all' }}',
+                        diaActivo: '{{ $filtroDia ?: 'all' }}',
+                        cambiarSede(s) { this.sedeActiva = s; },
+                        cambiarDia(d) { this.diaActivo = d; },
+                        limpiarFiltros() { this.sedeActiva = 'all'; this.diaActivo = 'all'; },
+                        cumpleSede(sede) {
+                            return this.sedeActiva === 'all' || this.sedeActiva === '' || this.sedeActiva === sede;
+                        },
+                        cumpleDia(fechaYmd, esHoy, esManana) {
+                            if (this.diaActivo === 'all' || this.diaActivo === '') return true;
+                            if (this.diaActivo === 'hoy') return esHoy;
+                            if (this.diaActivo === 'manana') return esManana;
+                            return this.diaActivo === fechaYmd;
+                        }
+                    }">
+
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-5">
                         <div class="flex items-center space-x-3">
                             <div class="w-1.5 h-6 bg-gradient-to-b from-amber-400 to-red-600 rounded-full"></div>
                             <div>
                                 <h2 class="text-xl font-bold text-white tracking-tight">Horarios Disponibles</h2>
-                                <p class="text-xs text-gray-400">Selecciona tu horario preferido para elegir butacas.</p>
+                                <p class="text-xs text-gray-400">Selecciona tu sede y día en tiempo real para ver las salas y elegir tus butacas.</p>
                             </div>
                         </div>
 
-                        @if ($filtroSede || $filtroDia || $filtroTurno)
-                            <a href="{{ route('peliculas.show', $pelicula) }}"
-                                class="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 hover:text-red-300 bg-red-950/40 border border-red-800/60 px-3 py-1.5 rounded-xl transition-all">
-                                <span>✕</span>
-                                <span>Limpiar Filtros</span>
-                            </a>
-                        @endif
+                        <button type="button" x-show="sedeActiva !== 'all' || diaActivo !== 'all'" @click="limpiarFiltros()"
+                            class="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 hover:text-red-300 bg-red-950/40 border border-red-800/60 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                            x-cloak>
+                            <span>✕</span>
+                            <span>Ver Todos los Horarios</span>
+                        </button>
                     </div>
 
-                    <!-- BARRA DE FILTRADO DINÁMICO (Sede, Día y Turno de Horario) -->
-                    <div class="space-y-3.5 bg-gray-950/60 border border-gray-800/80 p-4 rounded-2xl">
+                    <!-- BARRA DE FILTRADO DINÁMICO EN TIEMPO REAL (Solo Sede y Día) -->
+                    <div class="space-y-4 bg-gray-950/60 border border-gray-800/80 p-4 rounded-2xl">
                         
                         {{-- Filtro por Sede --}}
                         @if ($sedesDisponibles->isNotEmpty())
                             <div class="space-y-1.5">
                                 <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">📍 Seleccionar Sede:</span>
                                 <div class="flex flex-wrap gap-2">
-                                    <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => null, 'dia' => $filtroDia ?: null, 'turno' => $filtroTurno ?: null])) }}"
-                                        class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {{ empty($filtroSede) || $filtroSede === 'all' ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800' }}">
+                                    <button type="button" @click="cambiarSede('all')"
+                                        :class="sedeActiva === 'all' || sedeActiva === '' ? 'bg-red-600 text-white shadow-md shadow-red-900/30 font-bold' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800'"
+                                        class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer">
                                         Todas las Sedes
-                                    </a>
+                                    </button>
                                     @foreach ($sedesDisponibles as $sedeNombre)
-                                        <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $sedeNombre, 'dia' => $filtroDia ?: null, 'turno' => $filtroTurno ?: null])) }}"
-                                            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {{ $filtroSede === $sedeNombre ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800' }}">
+                                        <button type="button" @click="cambiarSede('{{ $sedeNombre }}')"
+                                            :class="sedeActiva === '{{ $sedeNombre }}' ? 'bg-red-600 text-white shadow-md shadow-red-900/30 font-bold' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800'"
+                                            class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer">
                                             {{ $sedeNombre }}
-                                        </a>
+                                        </button>
                                     @endforeach
                                 </div>
                             </div>
@@ -123,18 +141,21 @@
                         <div class="space-y-1.5 pt-1">
                             <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">📅 Seleccionar Día:</span>
                             <div class="flex flex-wrap gap-2">
-                                <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $filtroSede ?: null, 'dia' => null, 'turno' => $filtroTurno ?: null])) }}"
-                                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {{ empty($filtroDia) || $filtroDia === 'all' ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800' }}">
+                                <button type="button" @click="cambiarDia('all')"
+                                    :class="diaActivo === 'all' || diaActivo === '' ? 'bg-red-600 text-white shadow-md shadow-red-900/30 font-bold' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800'"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer">
                                     Todos los Días
-                                </a>
-                                <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $filtroSede ?: null, 'dia' => 'hoy', 'turno' => $filtroTurno ?: null])) }}"
-                                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {{ $filtroDia === 'hoy' ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800' }}">
+                                </button>
+                                <button type="button" @click="cambiarDia('hoy')"
+                                    :class="diaActivo === 'hoy' ? 'bg-red-600 text-white shadow-md shadow-red-900/30 font-bold' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800'"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer">
                                     Hoy
-                                </a>
-                                <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $filtroSede ?: null, 'dia' => 'manana', 'turno' => $filtroTurno ?: null])) }}"
-                                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {{ $filtroDia === 'manana' ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800' }}">
+                                </button>
+                                <button type="button" @click="cambiarDia('manana')"
+                                    :class="diaActivo === 'manana' ? 'bg-red-600 text-white shadow-md shadow-red-900/30 font-bold' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800'"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer">
                                     Mañana
-                                </a>
+                                </button>
                                 @foreach ($fechasDisponibles as $fDisp)
                                     @php
                                         $carbonF = \Carbon\Carbon::parse($fDisp);
@@ -142,43 +163,26 @@
                                         $esManana = $carbonF->isTomorrow();
                                     @endphp
                                     @if (!$esHoy && !$esManana)
-                                        <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $filtroSede ?: null, 'dia' => $fDisp, 'turno' => $filtroTurno ?: null])) }}"
-                                            class="px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all {{ $filtroDia === $fDisp ? 'bg-red-600 text-white shadow-md shadow-red-900/30' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800' }}">
+                                        <button type="button" @click="cambiarDia('{{ $fDisp }}')"
+                                            :class="diaActivo === '{{ $fDisp }}' ? 'bg-red-600 text-white shadow-md shadow-red-900/30 font-bold' : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800'"
+                                            class="px-3.5 py-1.5 rounded-xl text-xs font-medium capitalize transition-all cursor-pointer">
                                             {{ $carbonF->locale('es')->isoFormat('ddd D MMM') }}
-                                        </a>
+                                        </button>
                                     @endif
                                 @endforeach
                             </div>
                         </div>
 
-                        {{-- Filtro por Turno de Horario --}}
-                        <div class="space-y-1.5 pt-1">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">⏰ Filtrar por Horario / Turno:</span>
-                            <div class="flex flex-wrap gap-2">
-                                <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $filtroSede ?: null, 'dia' => $filtroDia ?: null, 'turno' => null])) }}"
-                                    class="px-3 py-1 rounded-lg text-xs font-medium transition-all {{ empty($filtroTurno) || $filtroTurno === 'all' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold' : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white' }}">
-                                    Todos los Horarios
-                                </a>
-                                <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $filtroSede ?: null, 'dia' => $filtroDia ?: null, 'turno' => 'manana'])) }}"
-                                    class="px-3 py-1 rounded-lg text-xs font-medium transition-all {{ $filtroTurno === 'manana' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold' : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white' }}">
-                                    🌅 Mañana (Antes de 14:00)
-                                </a>
-                                <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $filtroSede ?: null, 'dia' => $filtroDia ?: null, 'turno' => 'tarde'])) }}"
-                                    class="px-3 py-1 rounded-lg text-xs font-medium transition-all {{ $filtroTurno === 'tarde' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold' : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white' }}">
-                                    🌇 Tarde (14:00 - 18:59)
-                                </a>
-                                <a href="{{ route('peliculas.show', array_filter(['pelicula' => $pelicula->slug, 'sede' => $filtroSede ?: null, 'dia' => $filtroDia ?: null, 'turno' => 'noche'])) }}"
-                                    class="px-3 py-1 rounded-lg text-xs font-medium transition-all {{ $filtroTurno === 'noche' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold' : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white' }}">
-                                    🌙 Noche (19:00 en adelante)
-                                </a>
-                            </div>
-                        </div>
-
                     </div>
 
-                    <!-- LISTADO DE FUNCIONES AGRUPADAS POR SEDE, DÍA Y SALA -->
+                    <!-- LISTADO DE FUNCIONES AGRUPADAS POR SEDE, DÍA Y SALA CON REACTIVIDAD A TIEMPO REAL -->
                     @forelse ($funcionesAgrupadas as $nombreSede => $diasDeSede)
-                        <div class="border border-gray-800 bg-gray-950/40 rounded-2xl p-5 space-y-5">
+                        <div class="border border-gray-800 bg-gray-950/40 rounded-2xl p-5 space-y-5 transition-all duration-300"
+                            x-show="cumpleSede('{{ $nombreSede }}')"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-98"
+                            x-transition:enter-end="opacity-100 transform scale-100">
+
                             <div class="flex items-center space-x-2 text-base font-extrabold text-white">
                                 <span class="text-red-500">📍</span>
                                 <span>Complejo: {{ $nombreSede }}</span>
@@ -187,12 +191,17 @@
                             @foreach ($diasDeSede as $fechaYmd => $salasDeFecha)
                                 @php
                                     $carbonFecha = \Carbon\Carbon::parse($fechaYmd);
+                                    $esDiaHoy = $carbonFecha->isToday();
+                                    $esDiaManana = $carbonFecha->isTomorrow();
                                 @endphp
-                                <div class="bg-gray-900/60 border border-gray-800/80 rounded-xl p-4 space-y-4">
+                                <div class="bg-gray-900/60 border border-gray-800/80 rounded-xl p-4 space-y-4 transition-all duration-200"
+                                    x-show="cumpleDia('{{ $fechaYmd }}', {{ $esDiaHoy ? 'true' : 'false' }}, {{ $esDiaManana ? 'true' : 'false' }})"
+                                    x-transition>
+
                                     <div class="flex items-center justify-between border-b border-gray-800/60 pb-2">
                                         <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                                             <span>📅</span>
-                                            <span>{{ $carbonFecha->isToday() ? 'Hoy, ' : ($carbonFecha->isTomorrow() ? 'Mañana, ' : '') }}{{ $carbonFecha->locale('es')->isoFormat('dddd D [de] MMMM') }}</span>
+                                            <span>{{ $esDiaHoy ? 'Hoy, ' : ($esDiaManana ? 'Mañana, ' : '') }}{{ $carbonFecha->locale('es')->isoFormat('dddd D [de] MMMM') }}</span>
                                         </span>
                                     </div>
 
@@ -235,12 +244,8 @@
                     @empty
                         <div class="p-8 text-center border border-dashed border-gray-800 rounded-2xl space-y-3 bg-gray-950/40">
                             <span class="text-3xl block">🎟️</span>
-                            <h3 class="text-base font-bold text-white">No hay horarios disponibles con los filtros seleccionados</h3>
-                            <p class="text-xs text-gray-400">Prueba cambiando la sede, el día o el turno de horario para ver otras proyecciones.</p>
-                            <a href="{{ route('peliculas.show', $pelicula) }}"
-                                class="inline-block bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase px-4 py-2 rounded-xl transition-colors mt-2">
-                                Ver Todos los Horarios
-                            </a>
+                            <h3 class="text-base font-bold text-white">No hay funciones disponibles en este momento</h3>
+                            <p class="text-xs text-gray-400">Pronto se programarán nuevas funciones para esta película.</p>
                         </div>
                     @endforelse
                 </div>

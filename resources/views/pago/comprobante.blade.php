@@ -170,8 +170,10 @@
 
                 {{-- Columna Derecha: Código QR de Entrada --}}
                 <div class="md:col-span-4 p-6 sm:p-8 flex flex-col items-center justify-center text-center space-y-4 bg-gray-950/30 print:bg-white">
-                    <div class="bg-white p-3 rounded-2xl shadow-xl flex items-center justify-center max-w-[200px] border border-gray-200">
-                        {!! $comprobante->qr_svg !!}
+                    <div class="bg-white p-3.5 rounded-2xl shadow-xl flex items-center justify-center w-44 h-44 border border-gray-200 overflow-hidden shrink-0 print:border-black">
+                        <div class="w-full h-full flex items-center justify-center">
+                            {!! $comprobante->qr_svg !!}
+                        </div>
                     </div>
 
                     <div class="space-y-1">

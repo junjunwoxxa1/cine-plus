@@ -117,8 +117,14 @@ class Comprobante extends Model
             );
 
             $writer = new Writer($renderer);
+            $svg = $writer->writeString($contenido);
 
-            return $writer->writeString($contenido);
+            // Asegurar que el SVG sea fluido y encaje perfectamente en el contenedor blanco
+            $svg = str_replace('<svg ', '<svg class="w-full h-full max-w-full max-h-full block" preserveAspectRatio="xMidYMid meet" ', $svg);
+            $svg = preg_replace('/width="[^"]*"/', 'width="100%"', $svg, 1);
+            $svg = preg_replace('/height="[^"]*"/', 'height="100%"', $svg, 1);
+
+            return $svg;
         } catch (\Throwable $e) {
             return '';
         }
