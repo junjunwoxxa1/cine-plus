@@ -5,6 +5,9 @@
             <p class="text-sm text-zinc-400 mt-1">Gestión general del cine, dulcería, catálogo y usuarios.</p>
         </div>
         <div class="flex flex-wrap gap-2">
+            <flux:button variant="subtle" icon="calculator" :href="route('pos.dulceria')" target="_blank" class="border-amber-500/30 text-amber-400 hover:text-amber-300 bg-amber-500/10">
+                🍿 POS Dulcería
+            </flux:button>
             <flux:button variant="primary" icon="plus" :href="route('admin.productos')" wire:navigate>
                 Nuevo Producto
             </flux:button>

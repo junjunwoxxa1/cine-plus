@@ -44,15 +44,17 @@ class CompraController extends Controller
         $comprobantes = $comprobantesQuery->get();
 
         // Entradas activas: vigentes según su día y horario de función
-        $ahora = now();
-        $entradasActivas = $comprobantes->filter(function ($c) use ($ahora) {
+        $tz = config('app.timezone', 'America/Lima');
+        $ahora = now($tz);
+        $entradasActivas = $comprobantes->filter(function ($c) use ($ahora, $tz) {
             if ($c->estado !== 'pagado') {
                 return false;
             }
 
             if ($c->fecha_funcion) {
+                $fechaFuncion = \Carbon\Carbon::parse($c->fecha_funcion->format('Y-m-d H:i:s'), $tz);
                 // Permanece activa mientras no haya pasado el día y el horario de la función (con margen de 3 horas de duración)
-                return $c->fecha_funcion->copy()->addHours(3)->isAfter($ahora);
+                return $fechaFuncion->copy()->addHours(3)->isAfter($ahora);
             }
 
             // Compras de dulcería sin función: activa durante el día de la compra

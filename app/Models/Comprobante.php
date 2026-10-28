@@ -155,13 +155,20 @@ class Comprobante extends Model
             return false;
         }
 
+        $tz = config('app.timezone', 'America/Lima');
+        $ahora = now($tz);
+
         if (! $this->fecha_funcion) {
             // Compras sin función (ej. dulcería directa): permitidas dentro de las primeras 12 horas de creada
-            return $this->created_at && $this->created_at->diffInHours(now(), false) <= 12;
+            $creado = $this->created_at ? \Carbon\Carbon::parse($this->created_at->format('Y-m-d H:i:s'), $tz) : null;
+
+            return $creado && $creado->diffInHours($ahora, false) <= 12;
         }
 
+        $fechaFuncion = \Carbon\Carbon::parse($this->fecha_funcion->format('Y-m-d H:i:s'), $tz);
+
         // Requiere al menos 12 horas antes del inicio de la función
-        return now()->diffInMinutes($this->fecha_funcion, false) >= (12 * 60);
+        return $ahora->diffInMinutes($fechaFuncion, false) >= (12 * 60);
     }
 
     /**
@@ -173,7 +180,11 @@ class Comprobante extends Model
             return null;
         }
 
-        return round(now()->diffInMinutes($this->fecha_funcion, false) / 60, 1);
+        $tz = config('app.timezone', 'America/Lima');
+        $ahora = now($tz);
+        $fechaFuncion = \Carbon\Carbon::parse($this->fecha_funcion->format('Y-m-d H:i:s'), $tz);
+
+        return round($ahora->diffInMinutes($fechaFuncion, false) / 60, 1);
     }
 
     /**
@@ -190,7 +201,10 @@ class Comprobante extends Model
         }
 
         if ($this->fecha_funcion) {
-            $horasRestantes = now()->diffInMinutes($this->fecha_funcion, false) / 60;
+            $tz = config('app.timezone', 'America/Lima');
+            $ahora = now($tz);
+            $fechaFuncion = \Carbon\Carbon::parse($this->fecha_funcion->format('Y-m-d H:i:s'), $tz);
+            $horasRestantes = $ahora->diffInMinutes($fechaFuncion, false) / 60;
 
             if ($horasRestantes <= 0) {
                 return 'La función ya se llevó a cabo o se encuentra en curso.';

@@ -47,7 +47,7 @@
                     @endif
 
                     @if (auth()->user()->canAccessPos())
-                        <a href="{{ route('pos.dulceria')" target="_blank" class="hidden sm:inline-flex text-[11px] sm:text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors items-center gap-1">
+                        <a href="{{ route('pos.dulceria') }}" target="_blank" class="hidden sm:inline-flex text-[11px] sm:text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors items-center gap-1">
                             <span>🍿</span>
                             <span>POS Dulcería</span>
                         </a>
