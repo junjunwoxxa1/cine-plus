@@ -110,6 +110,24 @@ class DulceriaPos extends Component
     public function registrarVenta(): void
     {
         if (empty($this->carrito)) {
+            $this->addError('carrito', 'El carrito de venta está vacío.');
+            return;
+        }
+
+        $totalFinal = $this->total;
+
+        if ($totalFinal <= 0) {
+            $this->addError('carrito', 'Error: El total de la venta debe ser mayor a S/ 0.00 y no puede ser negativo.');
+            return;
+        }
+
+        if ($this->montoRecibido < 0) {
+            $this->addError('montoRecibido', 'El monto recibido no puede ser un valor negativo.');
+            return;
+        }
+
+        if ($this->metodoPago === 'efectivo' && $this->montoRecibido < $totalFinal) {
+            $this->addError('montoRecibido', sprintf('Monto insuficiente: El efectivo recibido (S/ %.2f) es menor que el total de la venta (S/ %.2f).', $this->montoRecibido, $totalFinal));
             return;
         }
 
@@ -121,8 +139,6 @@ class DulceriaPos extends Component
                 return;
             }
         }
-
-        $totalFinal = $this->total;
         $itemsSnapshot = $this->carrito;
         $cajeroNombre = auth()->user()?->name ?? 'Cajero Dulcería';
         $metodoSeleccionado = match ($this->metodoPago) {

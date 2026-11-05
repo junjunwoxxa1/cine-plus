@@ -77,6 +77,16 @@ class MetodosPago extends Component
     public function toggleActivo(int $id): void
     {
         $m = MetodoPago::findOrFail($id);
+
+        // Regla: No se puede desactivar el último medio de pago activo
+        if ($m->activo) {
+            $activosCount = MetodoPago::where('activo', true)->count();
+            if ($activosCount <= 1) {
+                Flux::toast(variant: 'danger', text: 'Operación no permitida: Debe quedar al menos un medio de pago activo en el sistema.');
+                return;
+            }
+        }
+
         $m->activo = !$m->activo;
         $m->save();
         $this->cargarMetodos();
@@ -89,6 +99,17 @@ class MetodosPago extends Component
 
         if ($this->metodoId) {
             $m = MetodoPago::findOrFail($this->metodoId);
+
+            // Regla: No desactivar si es el único activo
+            if ($m->activo && ! ($validated['activo'] ?? false)) {
+                $activosRestantes = MetodoPago::where('activo', true)->where('id', '!=', $m->id)->count();
+                if ($activosRestantes < 1) {
+                    $this->addError('activo', 'Debe haber al menos un medio de pago activo en el sistema.');
+                    Flux::toast(variant: 'danger', text: 'Operación no permitida: Debe quedar al menos un medio de pago activo en el sistema.');
+                    return;
+                }
+            }
+
             $m->update($validated);
             Flux::toast(variant: 'success', text: 'Método de pago actualizado.');
         } else {
@@ -103,6 +124,16 @@ class MetodosPago extends Component
     public function eliminar(int $id): void
     {
         $m = MetodoPago::findOrFail($id);
+
+        // Regla: No eliminar si es el único medio de pago activo
+        if ($m->activo) {
+            $activosRestantes = MetodoPago::where('activo', true)->where('id', '!=', $m->id)->count();
+            if ($activosRestantes < 1) {
+                Flux::toast(variant: 'danger', text: 'No se puede eliminar: Debe quedar al menos un medio de pago activo en el sistema.');
+                return;
+            }
+        }
+
         $m->delete();
         $this->cargarMetodos();
         Flux::toast(variant: 'success', text: 'Método eliminado.');

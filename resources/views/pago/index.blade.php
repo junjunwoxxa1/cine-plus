@@ -50,6 +50,16 @@
 
         <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Pago y Confirmación</h1>
 
+        @if ($errors->any())
+            <div class="p-4 rounded-xl bg-red-950/80 border border-red-600/80 text-red-200 text-xs sm:text-sm font-semibold flex items-center gap-3 shadow-lg">
+                <span class="text-2xl">⚠️</span>
+                <div>
+                    <strong class="text-white block font-bold">No se pudo procesar el pago:</strong>
+                    <span>{{ $errors->first() }}</span>
+                </div>
+            </div>
+        @endif
+
         <form action="{{ route('pago.procesar') }}" method="POST"
             @submit="if (inputCodigoPromo && !codigoPromoAplicado) { aplicarCodigoPromo(); }"
             class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -313,27 +323,65 @@
 
                         {{-- Formulario para Tarjeta de Crédito/Débito --}}
                         <div x-show="requiereTarjeta && total > 0" class="space-y-4 pt-2" x-transition>
+                            {{-- Tarjetas de Prueba (Sandbox / Calidad) --}}
+                            <div class="p-3 bg-zinc-950/90 border border-zinc-800 rounded-xl space-y-2 text-xs">
+                                <div class="flex items-center justify-between text-[11px] font-bold text-zinc-400">
+                                    <span>💳 Tarjetas de Prueba Disponibles (Haz clic para autocompletar):</span>
+                                    <span class="text-zinc-500 font-mono text-[10px]">Ambiente de Calidad</span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <button type="button"
+                                        onclick="document.querySelector('input[name=numero_tarjeta]').value='4000 1234 5678 9010'; document.querySelector('input[name=vencimiento]').value='12/28'; document.querySelector('input[name=cvc]').value='123';"
+                                        class="text-left p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-emerald-900/40 hover:border-emerald-500/50 transition-all cursor-pointer group shadow-sm">
+                                        <span class="text-[11px] font-bold text-emerald-400 block group-hover:text-emerald-300">✅ Débito con Saldo (Aprobada)</span>
+                                        <span class="font-mono text-zinc-200 text-xs">4000 1234 5678 9010</span>
+                                        <span class="text-[10px] text-zinc-500 block mt-0.5">Exp: 12/28 • CVC: 123</span>
+                                    </button>
+                                    <button type="button"
+                                        onclick="document.querySelector('input[name=numero_tarjeta]').value='4000 0000 0000 0002'; document.querySelector('input[name=vencimiento]').value='12/28'; document.querySelector('input[name=cvc]').value='789';"
+                                        class="text-left p-2.5 rounded-lg bg-zinc-900 hover:bg-red-950/40 border border-red-900/50 hover:border-red-500/60 transition-all cursor-pointer group shadow-sm">
+                                        <span class="text-[11px] font-bold text-red-400 block group-hover:text-red-300">❌ Débito Sin Fondos (Rechazo)</span>
+                                        <span class="font-mono text-zinc-200 text-xs">4000 0000 0000 0002</span>
+                                        <span class="text-[10px] text-red-400/80 block mt-0.5">Simula Saldo Insuficiente</span>
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="space-y-1.5">
                                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Número de Tarjeta</label>
                                 <input type="text" name="numero_tarjeta" placeholder="0000 0000 0000 0000"
+                                    value="{{ old('numero_tarjeta') }}"
                                     :required="requiereTarjeta && total > 0"
                                     maxlength="19"
-                                    class="w-full border border-gray-800 rounded-xl p-3 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
+                                    class="w-full border @error('numero_tarjeta') border-red-500 bg-red-950/20 @else border-gray-800 bg-gray-900 @enderror rounded-xl p-3 text-sm text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
+                                @error('numero_tarjeta')
+                                    <p class="text-xs font-bold text-red-400 mt-1 flex items-center gap-1">
+                                        <span>⛔</span>
+                                        <span>{{ $message }}</span>
+                                    </p>
+                                @enderror
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-1.5">
                                     <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Vencimiento</label>
                                     <input type="text" name="vencimiento" placeholder="MM/YY"
+                                        value="{{ old('vencimiento') }}"
                                         :required="requiereTarjeta && total > 0"
                                         maxlength="5"
                                         class="w-full border border-gray-800 rounded-xl p-3 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
+                                    @error('vencimiento')
+                                        <p class="text-xs text-red-400 mt-1">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div class="space-y-1.5">
                                     <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">CVC</label>
                                     <input type="password" name="cvc" placeholder="***" maxlength="4"
                                         :required="requiereTarjeta && total > 0"
                                         class="w-full border border-gray-800 rounded-xl p-3 text-sm bg-gray-900 text-white placeholder-gray-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono">
+                                    @error('cvc')
+                                        <p class="text-xs text-red-400 mt-1">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             </div>
                         </div>

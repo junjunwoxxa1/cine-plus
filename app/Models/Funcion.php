@@ -33,6 +33,65 @@ class Funcion extends Model
     ];
 
     /**
+     * Duración en minutos de la película asignada a la función (por defecto 120 min).
+     */
+    public function getDuracionMinutosAttribute(): int
+    {
+        return (int) ($this->pelicula?->duracion ?: 120);
+    }
+
+    /**
+     * Tiempo reglamentario de receso y limpieza de sala entre funciones (15 minutos).
+     */
+    public static function recesoLimpiezaMinutos(): int
+    {
+        return 15;
+    }
+
+    /**
+     * Duración total del bloque de ocupación en sala (duración de la película + 15 min de limpieza).
+     */
+    public function getDuracionTotalMinutosAttribute(): int
+    {
+        return $this->duracion_minutos + self::recesoLimpiezaMinutos();
+    }
+
+    /**
+     * Fecha y hora en que culmina la proyección de la película.
+     */
+    public function getFechaFinPeliculaAttribute(): ?\Carbon\Carbon
+    {
+        return $this->fecha_hora ? $this->fecha_hora->copy()->addMinutes($this->duracion_minutos) : null;
+    }
+
+    /**
+     * Fecha y hora en que culmina el receso de limpieza y la sala queda libre para la siguiente función.
+     */
+    public function getFechaFinLimpiezaAttribute(): ?\Carbon\Carbon
+    {
+        return $this->fecha_hora ? $this->fecha_hora->copy()->addMinutes($this->duracion_total_minutos) : null;
+    }
+
+    /**
+     * Determina si un horario propuesto se solapa con esta función (incluyendo sus 15 min de limpieza).
+     */
+    public function colisionaCon(\Carbon\Carbon $inicioPropuesto, int $duracionPropuestaMinutos): bool
+    {
+        if (! $this->fecha_hora) {
+            return false;
+        }
+
+        $inicioExistente = $this->fecha_hora->copy();
+        $finExistente = $inicioExistente->copy()->addMinutes($this->duracion_total_minutos);
+
+        $inicioNuevo = $inicioPropuesto->copy();
+        $finNuevo = $inicioNuevo->copy()->addMinutes($duracionPropuestaMinutos + self::recesoLimpiezaMinutos());
+
+        // Solapamiento de intervalos de tiempo [A_start, A_end) y [B_start, B_end)
+        return $inicioNuevo->lt($finExistente) && $finNuevo->gt($inicioExistente);
+    }
+
+    /**
      * Obtiene la configuración de distribución de butacas y escaleras para esta función
      * (usa la personalizada de la función si existe, o hereda la de su sala).
      *

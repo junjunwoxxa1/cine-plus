@@ -142,10 +142,17 @@ HUs = [
     ("HU-60", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero visualizar en color rojo y con etiqueta de 'Ocupado' los horarios ya programados para una sala y día determinados al crear una nueva función, para evitar colisiones y organizar la grilla de proyecciones con claridad visual inmediata.", "RN23, RN51, RN62"),
     ("HU-61", "Módulo de cancelaciones y devoluciones", "Sistema", "Como Sistema, quiero calcular la diferencia de horas para la regla de cancelación automática utilizando la zona horaria local oficial (America/Lima, UTC-5), garantizando que las funciones con más de 12 horas reales de anticipación permitan la cancelación sin desfases de huso horario.", "RN56, RN63"),
     ("HU-62", "Módulo de punto de venta", "Gerente / Administrador", "Como Gerente, quiero tener botones y enlaces de acceso directo al POS de Dulcería desde el panel principal de administración, barra superior y menú desplegable, para entrar inmediatamente al terminal de venta física sin impedimentos de permisos ni errores de navegación.", "RN29, RN42, RN55, RN64"),
-    ("HU-63", "Módulo de comprobantes y boletas", "Usuario", "Como Usuario, quiero visualizar el código QR de mi entrada perfectamente encajado dentro de su contenedor blanco en la tarjeta del ticket y en el comprobante digital, para asegurar su correcta legibilidad y escaneo rápido en la entrada a la sala sin desbordes.", "RN11, RN38, RN65")
+    ("HU-63", "Módulo de comprobantes y boletas", "Usuario", "Como Usuario, quiero visualizar el código QR de mi entrada perfectamente encajado dentro de su contenedor blanco en la tarjeta del ticket y en el comprobante digital, para asegurar su correcta legibilidad y escaneo rápido en la entrada a la sala sin desbordes.", "RN11, RN38, RN65"),
+
+    # NUEVAS HUs DE CALIDAD, LÍMITES Y HORARIOS (HU-64 A HU-68)
+    ("HU-64", "Módulo de compras y pagos", "Usuario", "Como Usuario, quiero que la pasarela valide estrictamente que no existan montos o pagos negativos y permita simular tarjetas de prueba de débito sin fondos para verificar el rechazo por saldo insuficiente, garantizando la transparencia y solidez del proceso de cobro.", "RN10, RN66"),
+    ("HU-65", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero que el sistema me impida desactivar o eliminar el último medio de pago activo, garantizando que siempre exista al menos una vía de cobro habilitada para los clientes en taquilla y web.", "RN10, RN46, RN67"),
+    ("HU-66", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero que el carrusel principal de la portada conserve siempre al menos una película seleccionada, evitando que la portada quede vacía o cargue películas no autorizadas por defecto.", "RN01, RN48, RN68"),
+    ("HU-67", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero configurar salas respetando un rango reglamentario estricto de mínimo 20 y máximo 300 butacas totales y visualizar en vivo el cálculo matemático de asientos a crear según las filas y columnas indicadas, para evitar salas desproporcionadas o fuera de normativa.", "RN23, RN28, RN69"),
+    ("HU-68", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero que el programador de funciones valide la duración exacta de la película más un receso obligatorio de 15 minutos para limpieza de sala, impidiendo solapamientos en la misma sala y ofreciendo recomendaciones automáticas de horarios libres para optimizar la cartelera diaria.", "RN23, RN51, RN62, RN70")
 ]
 
-# Matriz de Reglas de Negocio (RN01 a RN65)
+# Matriz de Reglas de Negocio (RN01 a RN70)
 RNs = [
     ("RN01", "La consulta de películas en cartelera y horarios disponibles es de acceso público y libre."),
     ("RN02", "La selección de butacas requiere indicar previamente la función y cantidad de entradas."),
@@ -211,7 +218,12 @@ RNs = [
     ("RN62", "En el formulario de creación de funciones, al seleccionar sala y fecha, el sistema consulta y resalta en rojo los horarios ya reservados para esa combinación, advirtiendo al administrador sobre franjas horarias ocupadas para prevenir colisiones."),
     ("RN63", "Todas las validaciones temporales del sistema, en especial la ventana de 12 horas para cancelación automática, se ejecutan en sincronía con la zona horaria oficial America/Lima (UTC-5), descartando desfases por zonas horarias del servidor o navegador."),
     ("RN64", "El usuario con rol Administrador (role_id = 1) posee autorización intrínseca en el Gate 'access-pos' y cuenta con accesos directos visibles en el Dashboard administrativo, barra superior y menú de usuario."),
-    ("RN65", "El código QR digital en comprobantes y tickets web se renderiza en formato SVG vectorial adaptativo con encaje simétrico en su contenedor blanco para lectura óptica inmediata en puertas de sala.")
+    ("RN65", "El código QR digital en comprobantes y tickets web se renderiza en formato SVG vectorial adaptativo con encaje simétrico en su contenedor blanco para lectura óptica inmediata en puertas de sala."),
+    ("RN66", "El sistema rechaza cualquier transacción con importes, subtotales o cálculos negativos. En el entorno de pruebas, la tarjeta con terminación '0002' simula saldo insuficiente y genera rechazo bancario explícito."),
+    ("RN67", "El panel administrativo de medios de pago exige como regla de integridad que al menos un método de pago permanezca activo en todo momento, bloqueando la desactivación o eliminación del último método activo."),
+    ("RN68", "La portada requiere al menos una película marcada activamente para el carrusel de novedades (en_banner = true), impidiendo retirar la última película para mantener la identidad visual del portal."),
+    ("RN69", "La capacidad de las salas de cine está restringida a un rango de entre 20 y 300 butacas totales (filas × columnas), calculándose y validándose de forma reactiva en el formulario de creación."),
+    ("RN70", "Cada función bloquea la sala durante el tiempo de duración de la película más un margen de 15 minutos de limpieza. El sistema prohíbe funciones simultáneas o solapadas en la misma sala y sugiere franjas horarias libres garantizadas.")
 ]
 
 # Construcción del Documento Word
@@ -235,9 +247,10 @@ r.font.color.rgb = RGBColor(93, 20, 33)
 p_intro = doc.add_paragraph()
 r_intro = p_intro.add_run(
     "A continuación se presenta la relación completa, ampliada y actualizada de las Historias de Usuario "
-    "(HU-01 a HU-63) del sistema Cine+, integrando las funcionalidades consolidadas de cartelera, venta de entradas, "
+    "(HU-01 a HU-68) del sistema Cine+, integrando las funcionalidades consolidadas de cartelera, venta de entradas, "
     "confitería, programa de puntos individuales (Cine vs. Dulcería), gestión de múltiples sedes, terminal de punto de venta (POS), "
-    "y la política de cancelación automática con ventana de 12 horas y sincronización horaria local."
+    "validación estricta de pagos y tarjetas de prueba de calidad, límites de butacas (20-300), "
+    "gestión del carrusel y programación de funciones con 15 min de limpieza y recomendaciones de horarios."
 )
 r_intro.font.name = "Arial"
 r_intro.font.size = Pt(9.5)
@@ -310,7 +323,7 @@ codigos_user = [
     # Fase 5: Dulcería
     "HU-23", "HU-24", "HU-31", "HU-32", "HU-37",
     # Fase 6: Descuentos y Pago
-    "HU-08", "HU-40", "HU-09", "HU-25",
+    "HU-08", "HU-40", "HU-09", "HU-25", "HU-64",
     # Fase 7: Comprobantes y QR
     "HU-34", "HU-35", "HU-46", "HU-63", "HU-10",
     # Fase 8: Mis Compras y Cancelación
@@ -404,7 +417,7 @@ r = p_admin_desc.add_run(
 r.font.name = "Arial"
 r.font.size = Pt(9)
 
-codigos_admin = ["HU-51", "HU-20", "HU-21", "HU-47", "HU-60", "HU-43", "HU-33", "HU-42", "HU-39", "HU-45", "HU-48", "HU-53", "HU-62", "HU-22"]
+codigos_admin = ["HU-51", "HU-20", "HU-21", "HU-47", "HU-60", "HU-68", "HU-43", "HU-67", "HU-33", "HU-42", "HU-65", "HU-39", "HU-45", "HU-48", "HU-66", "HU-53", "HU-62", "HU-22"]
 t_admin = doc.add_table(rows=1, cols=5)
 for i, h in enumerate(headers_gen):
     t_admin.rows[0].cells[i].paragraphs[0].text = h
@@ -417,9 +430,9 @@ apply_table_styles(t_admin, col_widths_general)
 
 doc.add_paragraph() # Espaciador
 
-# 3. MATRIZ DE REGLAS DE NEGOCIO (RN01 a RN65)
+# 3. MATRIZ DE REGLAS DE NEGOCIO (RN01 a RN70)
 h3_rn = doc.add_paragraph()
-r = h3_rn.add_run("6. Matriz Completa de Reglas de Negocio del Sistema (RN01 a RN65)")
+r = h3_rn.add_run("6. Matriz Completa de Reglas de Negocio del Sistema (RN01 a RN70)")
 r.font.name = "Arial"
 r.font.size = Pt(15)
 r.font.bold = True
@@ -448,3 +461,4 @@ apply_table_styles(t_rn, col_widths_rn)
 # Guardar documento
 doc.save("Historias_de_Usuario_CinePlus.docx")
 print("Documento guardado con éxito como Historias_de_Usuario_CinePlus.docx")
+

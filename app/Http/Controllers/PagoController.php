@@ -162,6 +162,11 @@ class PagoController extends Controller
         $montoDescuento = round(min(max($montoDescuento, 0), $maximoDescuento), 2);
         $totalFinal = max(0, round(($subtotalEntradas + $montoDulceria) - $montoDescuento, 2));
 
+        // Validación estricta contra valores y resoluciones negativas
+        if ($subtotalEntradas < 0 || $montoDulceria < 0 || $montoDescuento < 0 || $totalFinal < 0) {
+            return back()->withInput()->withErrors(['error' => 'Error de procesamiento: No se permiten montos ni pagos con valores negativos.']);
+        }
+
         // Reglas de validación
         $rules = [
             'nombre' => 'required|string|max:255',
@@ -182,6 +187,16 @@ class PagoController extends Controller
         }
 
         $validated = $request->validate($rules);
+
+        // Validación de Tarjeta de Pruebas: Simulación de Tarjeta con Saldo Insuficiente
+        if ($totalFinal > 0 && $metodo && $metodo->requiere_tarjeta && ! empty($validated['numero_tarjeta'])) {
+            $numeroTarjetaLimpio = preg_replace('/\D/', '', (string) $validated['numero_tarjeta']);
+            if ($numeroTarjetaLimpio === '4000000000000002' || str_ends_with($numeroTarjetaLimpio, '0002')) {
+                return back()->withInput()->withErrors([
+                    'numero_tarjeta' => 'Pago rechazado: Saldo insuficiente en la tarjeta de débito. Verifique los fondos disponibles de su cuenta o intente con otro medio de pago.',
+                ]);
+            }
+        }
 
         // Crear Comprobante y detalles dentro de una transacción atómica
         $comprobante = DB::transaction(function () use (

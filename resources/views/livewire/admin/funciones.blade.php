@@ -762,6 +762,25 @@
                 <flux:error name="pelicula_id" />
             </flux:field>
 
+            @php
+                $peliculaSeleccionada = $peliculas->firstWhere('id', (int) $pelicula_id);
+                $duracionActual = (int) ($peliculaSeleccionada?->duracion ?: 120);
+            @endphp
+            @if ($peliculaSeleccionada)
+                <div class="p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span class="text-zinc-300">
+                        🎬 <strong>{{ $peliculaSeleccionada->titulo }}</strong>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-amber-400 font-mono font-bold">⏱️ {{ $duracionActual }} min de película</span>
+                        <span class="text-zinc-600">•</span>
+                        <span class="text-indigo-400 font-mono font-bold">🧹 +15 min receso de limpieza</span>
+                        <span class="text-zinc-600">=</span>
+                        <span class="text-emerald-400 font-mono font-bold">{{ $duracionActual + 15 }} min totales de sala</span>
+                    </div>
+                </div>
+            @endif
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <flux:field>
                     <flux:label>Cine y Sala</flux:label>
@@ -784,22 +803,69 @@
                     <flux:error name="fecha_hora" />
 
                     @php
-                        $ocupadosHorasArray = $horariosOcupadosModal->map(fn ($f) => $f->fecha_hora->format('H:i'))->toArray();
-                        $horaActualInput = '';
-                        try {
-                            $horaActualInput = !empty($fecha_hora) ? \Carbon\Carbon::parse($fecha_hora)->format('H:i') : '';
-                        } catch (\Exception $e) {}
-                        $tieneConflicto = $horaActualInput !== '' && in_array($horaActualInput, $ocupadosHorasArray, true);
+                        $dtInicioPropuesto = null;
+                        $dtFinPeliculaPropuesto = null;
+                        $dtFinLimpiezaPropuesto = null;
+                        $conflictoEnVivo = null;
+
+                        if (!empty($fecha_hora)) {
+                            try {
+                                $dtInicioPropuesto = \Carbon\Carbon::parse($fecha_hora);
+                                $dtFinPeliculaPropuesto = $dtInicioPropuesto->copy()->addMinutes($duracionActual);
+                                $dtFinLimpiezaPropuesto = $dtInicioPropuesto->copy()->addMinutes($duracionActual + 15);
+
+                                foreach ($horariosOcupadosModal as $fOcup) {
+                                    if ($fOcup->colisionaCon($dtInicioPropuesto, $duracionActual)) {
+                                        $conflictoEnVivo = $fOcup;
+                                        break;
+                                    }
+                                }
+                            } catch (\Exception $e) {}
+                        }
                     @endphp
 
-                    @if ($tieneConflicto)
-                        <div class="text-[11px] font-bold text-red-400 bg-red-950/80 border border-red-600 rounded-lg p-2 mt-1.5 flex items-center gap-1.5 shadow-md">
-                            <span>⛔</span>
-                            <span>¡Atención! El horario {{ $horaActualInput }} ya está creado en esta sala. Elige otro horario para evitar duplicados.</span>
+                    @if ($conflictoEnVivo)
+                        <div class="text-[11px] font-bold text-red-300 bg-red-950/90 border border-red-600 rounded-lg p-2.5 mt-2 flex items-start gap-2 shadow-md">
+                            <span class="text-base leading-none">⛔</span>
+                            <div>
+                                <span class="block text-red-200 font-bold">¡Conflicto de Horario en esta Sala!</span>
+                                <span class="font-normal text-red-300 text-[11px] leading-tight block mt-0.5">
+                                    La sala ya está ocupada por <strong>«{{ $conflictoEnVivo->pelicula->titulo }}»</strong> de <strong>{{ $conflictoEnVivo->fecha_hora->format('H:i') }}</strong> a <strong>{{ $conflictoEnVivo->fecha_fin_limpieza->format('H:i') }} hrs</strong> (proyección hasta {{ $conflictoEnVivo->fecha_fin_pelicula->format('H:i') }} + 15 min de limpieza).
+                                </span>
+                            </div>
+                        </div>
+                    @elseif ($dtInicioPropuesto)
+                        <div class="text-[11px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2 mt-2 flex items-center justify-between">
+                            <span>✅ Horario libre: Proyección de {{ $dtInicioPropuesto->format('H:i') }} a {{ $dtFinPeliculaPropuesto->format('H:i') }} hrs.</span>
+                            <span class="text-zinc-400 font-mono text-[10px]">Sala libre tras aseo: {{ $dtFinLimpiezaPropuesto->format('H:i') }} hrs</span>
                         </div>
                     @endif
                 </flux:field>
             </div>
+
+            {{-- RECOMENDACIONES DE HORARIOS DISPONIBLES (CON 15 MIN DE LIMPIEZA INCLUIDO) --}}
+            @if (!empty($horariosRecomendadosModal))
+                <div class="bg-indigo-950/30 border border-indigo-500/40 rounded-xl p-3.5 space-y-2 shadow-md">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                            <span>💡</span>
+                            <span>Horarios libres recomendados (con 15 min de limpieza incluidos):</span>
+                        </span>
+                        <span class="text-[10px] text-indigo-400 font-mono bg-indigo-950 px-2 py-0.5 rounded border border-indigo-700 font-bold">
+                            Clic para asignar
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-0.5">
+                        @foreach ($horariosRecomendadosModal as $horaRec)
+                            <button type="button" wire:click="aplicarHorarioRecomendado('{{ $horaRec }}')"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-900/60 hover:bg-indigo-600 border border-indigo-500/60 hover:border-indigo-400 text-xs font-mono font-bold text-white transition-all cursor-pointer shadow-sm">
+                                <span>🕒 {{ $horaRec }} hrs</span>
+                                <span class="text-[10px] text-indigo-200">Asignar &rarr;</span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             {{-- HORARIOS YA CREADOS EN ROJO PARA SABER QUE NO ESTÁN DISPONIBLES --}}
             @if ($horariosOcupadosModal->isNotEmpty())
@@ -810,16 +876,16 @@
                             <span>Horarios ya creados en esta sala para este día (EN ROJO = NO DISPONIBLES):</span>
                         </span>
                         <span class="text-[10px] text-red-400 font-mono font-bold bg-red-950 px-2 py-0.5 rounded border border-red-800">
-                            {{ $horariosOcupadosModal->count() }} horario(s) ocupado(s)
+                            {{ $horariosOcupadosModal->count() }} función(es) programada(s)
                         </span>
                     </div>
                     <div class="flex flex-wrap gap-2 pt-0.5">
                         @foreach ($horariosOcupadosModal as $fOcupada)
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-900/80 border border-red-500 text-xs font-mono font-bold text-white shadow-md">
-                                <span>🕒 {{ $fOcupada->fecha_hora->format('H:i') }} hrs</span>
-                                <span class="text-[11px] font-sans font-normal text-red-200">({{ $fOcupada->pelicula->titulo }})</span>
-                                <span class="bg-red-950 text-red-300 text-[10px] px-1.5 py-0.5 rounded border border-red-700 font-sans font-bold uppercase">Ya Creado</span>
-                            </span>
+                            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-900/80 border border-red-500 text-xs font-mono font-bold text-white shadow-md">
+                                <span>🕒 {{ $fOcupada->fecha_hora->format('H:i') }} - {{ $fOcupada->fecha_fin_limpieza->format('H:i') }} hrs</span>
+                                <span class="text-[11px] font-sans font-normal text-red-200">({{ $fOcupada->pelicula->titulo }} • {{ $fOcupada->duracion_minutos }}m + 15m aseo)</span>
+                                <span class="bg-red-950 text-red-300 text-[10px] px-1.5 py-0.5 rounded border border-red-700 font-sans font-bold uppercase">Ocupado</span>
+                            </div>
                         @endforeach
                     </div>
                 </div>
@@ -844,14 +910,15 @@
                     </div>
                     <div class="flex flex-wrap gap-1.5">
                         @php
-                            $ocupadosHoras = $horariosOcupadosModal->map(fn ($f) => $f->fecha_hora->format('H:i'))->toArray();
+                            $fechaDiaSolo = !empty($fecha_hora) ? \Carbon\Carbon::parse($fecha_hora)->format('Y-m-d') : today()->format('Y-m-d');
                         @endphp
-                        @foreach (['14:30', '16:15', '17:45', '19:15', '20:30', '22:15'] as $horaSugerida)
+                        @foreach (['13:00', '14:30', '16:00', '17:30', '19:00', '20:30', '22:00'] as $horaSugerida)
                             @php
-                                $estaOcupadoSugerido = in_array($horaSugerida, $ocupadosHoras, true);
+                                $candidatoSugerido = \Carbon\Carbon::parse($fechaDiaSolo . ' ' . $horaSugerida);
+                                $conflictoSugerido = $horariosOcupadosModal->first(fn($f) => $f->colisionaCon($candidatoSugerido, $duracionActual));
                             @endphp
-                            @if ($estaOcupadoSugerido)
-                                <button type="button" disabled title="Este horario ya está creado y ocupado en esta sala"
+                            @if ($conflictoSugerido)
+                                <button type="button" disabled title="Ocupado por {{ $conflictoSugerido->pelicula->titulo }} ({{ $conflictoSugerido->fecha_hora->format('H:i') }} a {{ $conflictoSugerido->fecha_fin_limpieza->format('H:i') }})"
                                     class="px-2.5 py-1 rounded-lg bg-red-950/90 border border-red-500 text-xs font-mono font-bold text-red-300 opacity-90 cursor-not-allowed flex items-center gap-1 shadow-sm">
                                     <span>⛔</span>
                                     <span>{{ $horaSugerida }} (Ocupado)</span>

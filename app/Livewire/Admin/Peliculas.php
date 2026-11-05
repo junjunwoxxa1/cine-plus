@@ -52,6 +52,19 @@ class Peliculas extends Component
     public function toggleBanner(int $id): void
     {
         $p = Pelicula::findOrFail($id);
+
+        // Regla: Al menos 1 película debe quedar seleccionada en el carrusel
+        if ($p->en_banner) {
+            $countBanner = Pelicula::where('en_banner', true)->count();
+            if ($countBanner <= 1) {
+                Flux::toast(
+                    variant: 'danger',
+                    text: 'Operación no permitida: Debe quedar al menos una película seleccionada para el carrusel de la portada.'
+                );
+                return;
+            }
+        }
+
         $p->en_banner = ! $p->en_banner;
         $p->save();
 
@@ -97,6 +110,17 @@ class Peliculas extends Component
 
         if ($this->peliculaId) {
             $p = Pelicula::findOrFail($this->peliculaId);
+
+            // Regla: No desmarcar del carrusel si es la única película activa en el banner
+            if ($p->en_banner && ! ($validated['en_banner'] ?? false)) {
+                $otrosEnBanner = Pelicula::where('en_banner', true)->where('id', '!=', $p->id)->count();
+                if ($otrosEnBanner < 1) {
+                    $this->addError('en_banner', 'Debe quedar al menos una película seleccionada para el carrusel de la portada.');
+                    Flux::toast(variant: 'danger', text: 'Debe quedar al menos una película seleccionada para el carrusel de la portada.');
+                    return;
+                }
+            }
+
             $p->update($validated);
             Flux::toast(variant: 'success', text: 'Película actualizada.');
         } else {
@@ -114,6 +138,14 @@ class Peliculas extends Component
         if ($p->funciones_count > 0) {
             Flux::toast(variant: 'danger', text: "No se puede eliminar porque tiene {$p->funciones_count} funciones asignadas.");
             return;
+        }
+
+        if ($p->en_banner) {
+            $otrosEnBanner = Pelicula::where('en_banner', true)->where('id', '!=', $p->id)->count();
+            if ($otrosEnBanner < 1) {
+                Flux::toast(variant: 'danger', text: 'No se puede eliminar: Esta película es la única seleccionada en el carrusel de la portada.');
+                return;
+            }
         }
 
         $p->delete();

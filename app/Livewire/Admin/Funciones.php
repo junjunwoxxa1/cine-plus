@@ -116,6 +116,84 @@ class Funciones extends Component
         $this->nuevoHorarioExtra = '';
     }
 
+    public function aplicarHorarioRecomendado(string $hora): void
+    {
+        try {
+            $fecha = ! empty($this->fecha_hora) ? Carbon::parse($this->fecha_hora)->format('Y-m-d') : today()->format('Y-m-d');
+            $this->fecha_hora = Carbon::parse($fecha.' '.$hora)->format('Y-m-d\TH:i');
+            Flux::toast(variant: 'success', text: "Horario {$hora} hrs asignado a la función.");
+        } catch (\Exception $e) {
+        }
+    }
+
+    public function calcularHorariosRecomendados(): array
+    {
+        if (! $this->modalAbierto || ! $this->sala_id || empty($this->fecha_hora)) {
+            return [];
+        }
+
+        try {
+            $fechaDia = Carbon::parse($this->fecha_hora)->format('Y-m-d');
+            $pelicula = Pelicula::find($this->pelicula_id);
+            $duracion = (int) ($pelicula?->duracion ?: 120);
+
+            $funcionesOcupadas = Funcion::with('pelicula')
+                ->where('sala_id', $this->sala_id)
+                ->whereDate('fecha_hora', $fechaDia)
+                ->when($this->funcionId, fn ($q) => $q->where('id', '!=', $this->funcionId))
+                ->orderBy('fecha_hora', 'asc')
+                ->get();
+
+            $candidatos = [];
+
+            // 1. Recomendaciones inmediatas tras concluir cada función y sus 15 min de aseo
+            foreach ($funcionesOcupadas as $f) {
+                if ($f->fecha_fin_limpieza) {
+                    $cand = $f->fecha_fin_limpieza->copy();
+                    // Redondear a múltiplo de 5 min hacia arriba
+                    $min = (int) $cand->minute;
+                    $resto = $min % 5;
+                    if ($resto !== 0) {
+                        $cand->addMinutes(5 - $resto);
+                    }
+                    if ($cand->format('Y-m-d') === $fechaDia && (int) $cand->format('H') <= 23) {
+                        $candidatos[] = $cand->format('H:i');
+                    }
+                }
+            }
+
+            // 2. Horarios comerciales habituales de cine a lo largo de la tarde/noche
+            $estandar = ['12:30', '13:45', '15:15', '16:45', '18:15', '19:45', '21:15', '22:30'];
+            foreach ($estandar as $h) {
+                if (! in_array($h, $candidatos, true)) {
+                    $candidatos[] = $h;
+                }
+            }
+
+            // Filtrar únicamente los horarios donde NO colisione con ninguna proyección ni su receso de limpieza
+            $recomendados = [];
+            foreach ($candidatos as $horaStr) {
+                $dtPropuesto = Carbon::parse($fechaDia.' '.$horaStr);
+                $colisiona = false;
+                foreach ($funcionesOcupadas as $f) {
+                    if ($f->colisionaCon($dtPropuesto, $duracion)) {
+                        $colisiona = true;
+                        break;
+                    }
+                }
+                if (! $colisiona && ! in_array($horaStr, $recomendados, true)) {
+                    $recomendados[] = $horaStr;
+                }
+            }
+
+            sort($recomendados);
+
+            return array_slice($recomendados, 0, 8);
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
     public function quitarHorarioExtra(int $index): void
     {
         unset($this->horariosAdicionales[$index]);
@@ -175,6 +253,9 @@ class Funciones extends Component
             $validated = $this->validate();
 
             $sala = Sala::with('butacas')->findOrFail($validated['sala_id']);
+            $pelicula = Pelicula::findOrFail($validated['pelicula_id']);
+            $duracionPelicula = (int) ($pelicula->duracion ?: 120);
+
             [$filasCount, $colCount] = $this->dimensionesDeSala($sala);
 
             $plantillaElegida = $this->plantilla_funcion !== 'heredar' ? $this->plantilla_funcion : null;
@@ -183,15 +264,25 @@ class Funciones extends Component
                 : null;
 
             if ($this->funcionId) {
-                // Verificar que no haya otra función en la misma sala al mismo horario
-                $conflicto = Funcion::where('sala_id', $validated['sala_id'])
-                    ->where('fecha_hora', $validated['fecha_hora'])
+                $dtPrincipal = Carbon::parse($validated['fecha_hora']);
+
+                // Validar que no haya colisión con otra función en la misma sala (duración + 15 min limpieza)
+                $conflicto = Funcion::with('pelicula')
+                    ->where('sala_id', $validated['sala_id'])
+                    ->whereDate('fecha_hora', $dtPrincipal->format('Y-m-d'))
                     ->where('id', '!=', $this->funcionId)
-                    ->exists();
+                    ->get()
+                    ->first(fn ($item) => $item->colisionaCon($dtPrincipal, $duracionPelicula));
 
                 if ($conflicto) {
-                    Flux::toast(variant: 'danger', text: 'Ya existe una función programada en esta misma sala para esa fecha y hora.');
-                    $this->addError('fecha_hora', 'La sala ya está ocupada en este horario.');
+                    $msgConflicto = sprintf(
+                        "Conflicto de horario: La sala ya está ocupada por «%s» de %s a %s hrs (incluye 15 min de limpieza).",
+                        $conflicto->pelicula->titulo,
+                        $conflicto->fecha_hora->format('H:i'),
+                        $conflicto->fecha_fin_limpieza->format('H:i')
+                    );
+                    Flux::toast(variant: 'danger', text: $msgConflicto);
+                    $this->addError('fecha_hora', $msgConflicto);
                     return;
                 }
 
@@ -234,20 +325,52 @@ class Funciones extends Component
                     }
                 }
 
-                $creadasExitosas = 0;
-                $omitidasDuplicadas = 0;
+                // 1. Validar solapamientos internos entre los horarios adicionales seleccionados
+                for ($i = 0; $i < count($fechasHorasCrear); $i++) {
+                    for ($j = $i + 1; $j < count($fechasHorasCrear); $j++) {
+                        $dt1 = $fechasHorasCrear[$i];
+                        $dt2 = $fechasHorasCrear[$j];
+                        $fin1 = $dt1->copy()->addMinutes($duracionPelicula + Funcion::recesoLimpiezaMinutos());
+                        $fin2 = $dt2->copy()->addMinutes($duracionPelicula + Funcion::recesoLimpiezaMinutos());
+                        if ($dt1->lt($fin2) && $fin1->gt($dt2)) {
+                            $msg = sprintf(
+                                "Conflicto interno entre horarios seleccionados (%s y %s). Cada función requiere %d min de proyección + 15 min de limpieza.",
+                                $dt1->format('H:i'),
+                                $dt2->format('H:i'),
+                                $duracionPelicula
+                            );
+                            Flux::toast(variant: 'danger', text: $msg);
+                            $this->addError('fecha_hora', $msg);
+                            return;
+                        }
+                    }
+                }
+
+                // 2. Validar que ninguno de los horarios colisione con funciones ya existentes en BD
+                $funcionesDelDia = Funcion::with('pelicula')
+                    ->where('sala_id', $validated['sala_id'])
+                    ->whereDate('fecha_hora', $fechaDia)
+                    ->get();
 
                 foreach ($fechasHorasCrear as $dt) {
-                    // Evitar duplicados de funciones en la misma sala y horario
-                    $yaExiste = Funcion::where('sala_id', $validated['sala_id'])
-                        ->where('fecha_hora', $dt->format('Y-m-d H:i:s'))
-                        ->exists();
-
-                    if ($yaExiste) {
-                        $omitidasDuplicadas++;
-                        continue;
+                    $conflicto = $funcionesDelDia->first(fn ($item) => $item->colisionaCon($dt, $duracionPelicula));
+                    if ($conflicto) {
+                        $msg = sprintf(
+                            "No se puede programar a las %s hrs: La sala ya está ocupada por «%s» de %s a %s (incluye 15 min de limpieza).",
+                            $dt->format('H:i'),
+                            $conflicto->pelicula->titulo,
+                            $conflicto->fecha_hora->format('H:i'),
+                            $conflicto->fecha_fin_limpieza->format('H:i')
+                        );
+                        Flux::toast(variant: 'danger', text: $msg);
+                        $this->addError('fecha_hora', $msg);
+                        return;
                     }
+                }
 
+                $creadasExitosas = 0;
+
+                foreach ($fechasHorasCrear as $dt) {
                     DB::transaction(function () use ($validated, $dt, $sala, $plantillaElegida, $mapaConfigFuncion) {
                         $funcion = Funcion::create([
                             'pelicula_id' => $validated['pelicula_id'],
@@ -270,13 +393,8 @@ class Funciones extends Component
                     Flux::toast(
                         variant: 'success',
                         text: $creadasExitosas > 1
-                            ? "Se programaron {$creadasExitosas} funciones correctamente."
-                            : 'Función programada y butacas inicializadas.'
-                    );
-                } elseif ($omitidasDuplicadas > 0) {
-                    Flux::toast(
-                        variant: 'warning',
-                        text: 'El horario seleccionado ya se encuentra ocupado en esta sala.'
+                            ? "Se programaron {$creadasExitosas} funciones respetando el receso de limpieza."
+                            : 'Función programada correctamente (con 15 min de limpieza).'
                     );
                 }
             }
@@ -840,6 +958,7 @@ class Funciones extends Component
 
         // Horarios ya creados/ocupados en la sala seleccionada para la fecha actual del modal
         $horariosOcupadosModal = collect();
+        $horariosRecomendadosModal = [];
         if ($this->modalAbierto && $this->sala_id && $this->fecha_hora !== '') {
             try {
                 $fechaDiaModal = Carbon::parse($this->fecha_hora)->format('Y-m-d');
@@ -849,6 +968,8 @@ class Funciones extends Component
                     ->when($this->funcionId, fn ($q) => $q->where('id', '!=', $this->funcionId))
                     ->orderBy('fecha_hora', 'asc')
                     ->get();
+
+                $horariosRecomendadosModal = $this->calcularHorariosRecomendados();
             } catch (\Exception $e) {
                 // Formato de fecha en edición
             }
@@ -870,6 +991,7 @@ class Funciones extends Component
             'butacasPorFilaModal' => $butacasPorFilaModal,
             'mapaConfigModal' => $mapaConfigModal,
             'horariosOcupadosModal' => $horariosOcupadosModal,
+            'horariosRecomendadosModal' => $horariosRecomendadosModal,
         ]);
     }
 }

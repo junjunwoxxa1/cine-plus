@@ -13,11 +13,11 @@ Route::get('/', function () {
         ->with(['funciones' => fn ($q) => $q->where('fecha_hora', '>=', now()->subHours(1))->orderBy('fecha_hora')])
         ->get();
 
-    // Si aún no se ha seleccionado ninguna película para el banner, tomar las 4 más recientes por defecto
+    // Si aún no se ha seleccionado ninguna película para el banner, tomar solo 1 por defecto
     if ($peliculasBanner->isEmpty()) {
         $peliculasBanner = Pelicula::with(['funciones' => fn ($q) => $q->where('fecha_hora', '>=', now()->subHours(1))->orderBy('fecha_hora')])
             ->latest('id')
-            ->take(4)
+            ->take(1)
             ->get();
     }
 

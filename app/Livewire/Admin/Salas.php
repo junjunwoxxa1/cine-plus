@@ -37,6 +37,11 @@ class Salas extends Component
         ];
     }
 
+    public function getTotalButacasProperty(): int
+    {
+        return (int) $this->filas * (int) $this->asientos_por_fila;
+    }
+
     public function mount(): void
     {
         $this->cargarSalas();
@@ -92,6 +97,20 @@ class Salas extends Component
 
         try {
             $validated = $this->validate();
+
+            // Validación estricta del límite de butacas totales (Mínimo: 20, Máximo: 300)
+            $totalButacas = (int) $validated['filas'] * (int) $validated['asientos_por_fila'];
+            if ($totalButacas < 20) {
+                $this->addError('filas', "La sala debe tener un mínimo de 20 butacas totales. Actualmente tiene {$totalButacas} butacas ({$validated['filas']} filas × {$validated['asientos_por_fila']} columnas).");
+                Flux::toast(variant: 'danger', text: "Límite insuficiente: Se requieren mínimo 20 butacas (actual: {$totalButacas}).");
+                return;
+            }
+
+            if ($totalButacas > 300) {
+                $this->addError('filas', "La sala no puede exceder el límite máximo de 300 butacas totales. Actualmente tiene {$totalButacas} butacas ({$validated['filas']} filas × {$validated['asientos_por_fila']} columnas).");
+                Flux::toast(variant: 'danger', text: "Límite excedido: La sala no puede superar las 300 butacas (actual: {$totalButacas}).");
+                return;
+            }
 
             // Evitar duplicados de salas en la misma sede
             $duplicadoQuery = Sala::where('sede', $validated['sede'])
