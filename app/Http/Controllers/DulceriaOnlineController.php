@@ -202,11 +202,13 @@ class DulceriaOnlineController extends Controller
                 'cvc.required' => 'Ingresa el código CVC.',
             ]);
 
-            // Validación de Tarjeta de Pruebas: Simulación de Tarjeta con Saldo Insuficiente
+            // Validación de Tarjetas de Prueba:
+            // Terminación '0002': Simulación de Tarjeta con Saldo Insuficiente (Rechazo explícito)
+            // Terminación '0003': Tarjeta de Prueba con Fondos Suficientes (Aprobación exitosa)
             $numeroTarjetaLimpio = preg_replace('/\D/', '', (string) $request->input('numero_tarjeta', ''));
             if ($numeroTarjetaLimpio === '4000000000000002' || str_ends_with($numeroTarjetaLimpio, '0002')) {
                 return back()->withInput()->withErrors([
-                    'numero_tarjeta' => 'Pago rechazado: Saldo insuficiente en la tarjeta de débito. Verifique los fondos disponibles de su cuenta o intente con otro medio de pago.',
+                    'numero_tarjeta' => 'Pago rechazado: Saldo insuficiente en la tarjeta de débito. Verifique los fondos disponibles de su cuenta o intente con otro medio de pago (Ej. Tarjeta de prueba con fondos: ...0003).',
                 ]);
             }
         }

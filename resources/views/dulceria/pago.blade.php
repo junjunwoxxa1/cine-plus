@@ -110,8 +110,13 @@
                     {{-- Formulario para Tarjeta --}}
                     <div x-show="requiereTarjeta" class="space-y-4 pt-2" x-transition>
                         <div class="space-y-1.5">
-                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Número de Tarjeta</label>
-                            <input type="text" name="numero_tarjeta" placeholder="0000 0000 0000 0000"
+                            <div class="flex flex-wrap items-center justify-between gap-1">
+                                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Número de Tarjeta</label>
+                                <span class="text-[11px] text-gray-400 font-medium">
+                                    💳 <span class="text-emerald-400 font-mono font-bold">...0003</span> con fondos • <span class="text-red-400 font-mono font-bold">...0002</span> sin fondos
+                                </span>
+                            </div>
+                            <input type="text" name="numero_tarjeta" placeholder="4000 0000 0000 0003"
                                 value="{{ old('numero_tarjeta') }}"
                                 :required="requiereTarjeta"
                                 maxlength="19"

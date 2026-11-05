@@ -86,6 +86,37 @@ test('pasarela de pagos rechaza tarjeta de prueba con saldo insuficiente termina
     $response->assertSessionHasErrors(['numero_tarjeta']);
 });
 
+test('pasarela de pagos aprueba tarjeta de prueba con fondos suficientes terminada en 0003', function () {
+    $this->seed();
+
+    $user = User::first();
+    $funcion = Funcion::with('butacas')->first();
+
+    $this->actingAs($user);
+
+    $response = $this->withSession([
+        'reserva_temp' => [
+            'funcion_id' => $funcion->id,
+            'cantidad' => 1,
+            'butacas_ids' => [$funcion->butacas->first()->id],
+            'butacas_codigos' => ['A1'],
+            'monto_total' => 25.00,
+            'productos' => [],
+            'monto_dulceria' => 0,
+        ],
+    ])->post(route('pago.procesar'), [
+        'nombre' => 'Test User',
+        'email' => 'test@example.com',
+        'metodo_pago' => 'tarjeta',
+        'numero_tarjeta' => '4000 0000 0000 0003',
+        'vencimiento' => '12/28',
+        'cvc' => '123',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $response->assertRedirect();
+});
+
 test('componente de salas tolera valores vacios o texto durante la edicion reactiva sin error 500', function () {
     $admin = User::first() ?? User::factory()->create(['rol' => 'administrador']);
     $this->actingAs($admin);
