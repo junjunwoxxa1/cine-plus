@@ -2,8 +2,10 @@
 
 use App\Livewire\Admin\Funciones;
 use App\Livewire\Admin\Salas;
+use App\Livewire\Pos\DulceriaPos;
 use App\Models\Funcion;
 use App\Models\Pelicula;
+use App\Models\Producto;
 use App\Models\User;
 use Livewire\Livewire;
 
@@ -137,4 +139,74 @@ test('sugerencias de horarios para el mismo dia no incluyen el horario principal
         $sugeridosDespues = $component->instance()->calcularHorariosSugeridosParaMismoDia();
         expect($sugeridosDespues)->not->toContain($primeraSugerida);
     }
+});
+
+test('pos dulceria tolera montos negativos y valida limpiamente sin error 500', function () {
+    $this->seed();
+
+    $user = User::first() ?? User::factory()->create(['rol' => 'administrador']);
+    $this->actingAs($user);
+
+    $producto = Producto::where('activo', true)->where('stock', '>', 5)->first();
+    expect($producto)->not->toBeNull();
+
+    Livewire::test(DulceriaPos::class)
+        ->call('agregarAlCarrito', $producto->id)
+        ->set('metodoPago', 'efectivo')
+        ->set('montoRecibido', '-96')
+        ->assertHasErrors(['montoRecibido'])
+        ->call('registrarVenta')
+        ->assertHasErrors(['montoRecibido'])
+        ->assertSet('modalTicketAbierto', false);
+});
+
+test('flujo de compra de entradas recuerda los productos de dulceria al retroceder a butacas', function () {
+    $this->seed();
+
+    $user = User::first();
+    $this->actingAs($user);
+
+    $funcion = Funcion::with('sala')->first();
+    $producto = Producto::where('activo', true)->where('stock', '>', 5)->first();
+
+    // 1. Establecer reserva temporal inicial (butaca seleccionada)
+    session([
+        'reserva_temp' => [
+            'funcion_id' => $funcion->id,
+            'butacas_ids' => [],
+            'butacas_codigos' => ['A1'],
+            'cantidad' => 1,
+            'monto_total' => 25.00,
+            'productos' => [],
+            'monto_dulceria' => 0,
+        ],
+    ]);
+
+    // 2. Sincronizar selección de dulcería
+    $response = $this->postJson(route('reservas.dulceria.sync'), [
+        'productos' => [
+            $producto->id => 2,
+        ],
+    ]);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'total_items' => 2,
+    ]);
+
+    // Verificar que la sesión guardó los productos
+    $reserva = session('reserva_temp');
+    expect($reserva['productos'])->toHaveKey($producto->id);
+    expect($reserva['productos'][$producto->id]['cantidad'])->toBe(2);
+
+    // 3. Volver a la pantalla de selección de butacas
+    $responseButacas = $this->get(route('reservas.butacas', $funcion));
+    $responseButacas->assertOk();
+    $responseButacas->assertSee('DULCERÍA GUARDADA');
+    $responseButacas->assertSee($producto->nombre);
+
+    // La sesión debe seguir conservando los productos de dulcería
+    $reservaPersistida = session('reserva_temp');
+    expect($reservaPersistida['productos'])->toHaveKey($producto->id);
 });

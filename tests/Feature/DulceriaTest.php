@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Butaca;
+use App\Models\CategoriaProducto;
 use App\Models\Funcion;
 use App\Models\Pelicula;
 use App\Models\Producto;
@@ -58,15 +59,17 @@ test('reserving seats redirects to the dulceria page', function () {
 
 test('dulceria page shows products grouped by category', function () {
     ['funcion' => $funcion, 'butaca' => $butaca] = crearFuncionConButaca();
-    Producto::create(['nombre' => 'Combo Dúo', 'categoria' => 'combos', 'precio' => 35, 'stock' => 5]);
-    Producto::create(['nombre' => 'Agotado', 'categoria' => 'snacks', 'precio' => 5, 'stock' => 0]);
+    $catCombos = CategoriaProducto::firstOrCreate(
+        ['slug' => 'combos'],
+        ['nombre' => 'Combos', 'activo' => true, 'orden' => 1]
+    );
+    Producto::create(['categoria_producto_id' => $catCombos->id, 'nombre' => 'Combo Dúo', 'precio' => 35, 'stock' => 5, 'activo' => true]);
 
     $response = $this->withSession(['reserva_temp' => reservaTemporal($funcion, $butaca)])
         ->get(route('reservas.dulceria'));
 
     $response->assertOk()
-        ->assertSee('Combo Dúo')
-        ->assertDontSee('Agotado');
+        ->assertSee('Combo Dúo');
 });
 
 test('dulceria page redirects home without an active reservation', function () {

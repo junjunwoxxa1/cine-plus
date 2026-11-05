@@ -187,6 +187,31 @@
                     </div>
                 </div>
 
+                @if (!empty($reservaPrevia['productos']))
+                    <!-- Dulcería y Snacks Guardados -->
+                    <div class="space-y-2 pt-2 border-t border-gray-800">
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <span>🍿</span> DULCERÍA GUARDADA
+                            </p>
+                            <span class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
+                                {{ count($reservaPrevia['productos']) }} ítems
+                            </span>
+                        </div>
+                        <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                            @foreach ($reservaPrevia['productos'] as $prod)
+                                <div class="flex justify-between items-center text-xs text-gray-300 bg-gray-950/60 p-2 rounded-lg border border-gray-800">
+                                    <span class="truncate pr-2 font-medium">{{ $prod['cantidad'] }}x {{ $prod['nombre'] }}</span>
+                                    <span class="font-bold text-amber-400 font-mono flex-shrink-0">S/ {{ number_format($prod['subtotal'] ?? ($prod['precio'] * $prod['cantidad']), 2) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                        <p class="text-[10px] text-gray-400 italic">
+                            ✓ Tus snacks se mantendrán listos al continuar.
+                        </p>
+                    </div>
+                @endif
+
                 <hr class="border-gray-800">
 
                 <!-- Botones de Acción -->

@@ -65,7 +65,8 @@ class ReservaController extends Controller
             'butacasPorFila',
             'mapaConfig',
             'butacasSeleccionadas',
-            'cantidadSeleccionada'
+            'cantidadSeleccionada',
+            'reservaPrevia'
         ));
     }
 
@@ -260,6 +261,63 @@ class ReservaController extends Controller
         session(['reserva_temp' => $reserva]);
 
         return redirect()->route('pago.index');
+    }
+
+    /**
+     * Sincroniza asíncronamente los productos de dulcería seleccionados en la sesión temporal.
+     * Permite que si el usuario regresa a modificar butacas, sus productos sigan guardados.
+     */
+    public function syncDulceria(Request $request)
+    {
+        $validated = $request->validate([
+            'productos' => 'nullable|array',
+            'productos.*' => 'integer|min:0',
+        ]);
+
+        $reserva = session('reserva_temp');
+        if (! $reserva) {
+            return response()->json(['success' => false, 'message' => 'No hay reserva activa.'], 404);
+        }
+
+        $productosSeleccionados = [];
+        $montoDulceria = 0.0;
+
+        if (! empty($validated['productos'])) {
+            $productosIds = array_keys(array_filter($validated['productos'], fn ($qty) => $qty > 0));
+            $productos = Producto::whereIn('id', $productosIds)->get()->keyBy('id');
+
+            foreach ($validated['productos'] as $productoId => $cantidad) {
+                if ($cantidad > 0 && $productos->has($productoId)) {
+                    $producto = $productos[$productoId];
+                    if (! $producto->activo || $producto->stock <= 0) {
+                        continue;
+                    }
+                    $cantidadReal = min((int) $producto->stock, (int) $cantidad);
+                    $subtotal = round((float) $producto->precio * $cantidadReal, 2);
+
+                    $productosSeleccionados[$productoId] = [
+                        'id' => (int) $producto->id,
+                        'nombre' => $producto->nombre,
+                        'cantidad' => $cantidadReal,
+                        'precio' => (float) $producto->precio,
+                        'precio_unitario' => (float) $producto->precio,
+                        'subtotal' => (float) $subtotal,
+                    ];
+                    $montoDulceria += $subtotal;
+                }
+            }
+        }
+
+        $reserva['productos'] = $productosSeleccionados;
+        $reserva['monto_dulceria'] = round($montoDulceria, 2);
+        session(['reserva_temp' => $reserva]);
+
+        return response()->json([
+            'success' => true,
+            'monto_dulceria' => $reserva['monto_dulceria'],
+            'productos' => $productosSeleccionados,
+            'total_items' => array_sum(array_column($productosSeleccionados, 'cantidad')),
+        ]);
     }
 
     /**

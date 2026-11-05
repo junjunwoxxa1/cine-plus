@@ -2,12 +2,12 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6" x-data="dulceriaController({
         productosData: {{ json_encode($productos->keyBy('id')->map(fn($p) => ['id' => $p->id, 'nombre' => $p->nombre, 'precio' => (float)$p->precio, 'precio_puntos' => $p->precio_puntos, 'categoria' => $p->categoria, 'stock' => (int) $p->stock, 'activo' => (bool) $p->activo])) }},
         montoEntradas: {{ $reserva['monto_total'] }},
-        cantidadesIniciales: {{ json_encode((object) collect($reserva['productos'] ?? [])->map(fn ($item) => $item['cantidad'])->all()) }}
+        cantidadesIniciales: {{ json_encode((object) collect($reserva['productos'] ?? [])->mapWithKeys(fn ($item, $id) => [((string) ($item['id'] ?? $id)) => (int) ($item['cantidad'] ?? 0)])->all()) }}
     })">
 
         {{-- Barra de Progreso del Flujo --}}
         <div class="flex items-center justify-center space-x-2 sm:space-x-4 text-xs font-bold tracking-wider">
-            <a href="{{ route('reservas.butacas', $funcion) }}" class="flex items-center space-x-1.5 text-green-400">
+            <a href="{{ route('reservas.butacas', $funcion) }}" @click.prevent="volverAButacas('{{ route('reservas.butacas', $funcion) }}')" class="flex items-center space-x-1.5 text-green-400">
                 <span class="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs">✓</span>
                 <span class="hidden sm:inline">BUTACAS</span>
             </a>
@@ -29,8 +29,8 @@
                 <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Dulcería & Snacks</h1>
                 <p class="text-xs sm:text-sm text-gray-400 mt-1">Agrega lo que quieras llevar a la sala. Podrás recogerlo en el módulo express.</p>
             </div>
-            <a href="{{ route('reservas.butacas', $funcion) }}"
-                class="inline-flex items-center space-x-2 text-xs sm:text-sm font-semibold text-gray-400 hover:text-white transition-colors group">
+            <a href="{{ route('reservas.butacas', $funcion) }}" @click.prevent="volverAButacas('{{ route('reservas.butacas', $funcion) }}')"
+                class="inline-flex items-center space-x-2 text-xs sm:text-sm font-semibold text-gray-400 hover:text-white transition-colors group cursor-pointer">
                 <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
@@ -329,6 +329,33 @@
                     let nuevo = Math.max(0, Math.min(maxStock, actual + cambio));
                     this.cantidadesProductos[id] = nuevo;
                     this.calcularTotales();
+                    this.sincronizarConServidor();
+                },
+
+                async sincronizarConServidor() {
+                    try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                            || '{{ csrf_token() }}';
+
+                        await fetch('{{ route('reservas.dulceria.sync') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken
+                            },
+                            body: JSON.stringify({ productos: this.cantidadesProductos })
+                        });
+                    } catch (e) {
+                        console.warn('Error al sincronizar dulcería en sesión:', e);
+                    }
+                },
+
+                async volverAButacas(url) {
+                    try {
+                        await this.sincronizarConServidor();
+                    } catch (e) {}
+                    window.location.href = url;
                 },
 
                 calcularTotales() {

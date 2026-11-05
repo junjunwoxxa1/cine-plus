@@ -30,7 +30,7 @@ class DulceriaPos extends Component
 
     public string $metodoPago = 'efectivo';
 
-    public float $montoRecibido = 0.0;
+    public $montoRecibido = 0.0;
 
     // Venta completada para el modal/ticket
     public ?int $ventaExitosaId = null;
@@ -83,6 +83,14 @@ class DulceriaPos extends Component
         }
     }
 
+    public function updatedMontoRecibido($val): void
+    {
+        $this->resetErrorBag('montoRecibido');
+        if (is_numeric($val) && (float) $val < 0) {
+            $this->addError('montoRecibido', 'El monto recibido no puede ser un valor negativo.');
+        }
+    }
+
     public function eliminarDelCarrito(int $productoId): void
     {
         unset($this->carrito[$productoId]);
@@ -91,7 +99,8 @@ class DulceriaPos extends Component
     public function limpiarCarrito(): void
     {
         $this->carrito = [];
-        $this->montoRecibido = 0;
+        $this->montoRecibido = 0.0;
+        $this->resetErrorBag();
     }
 
     public function getSubtotalProperty(): float
@@ -106,11 +115,12 @@ class DulceriaPos extends Component
 
     public function getVueltoProperty(): float
     {
-        if ($this->metodoPago !== 'efectivo' || $this->montoRecibido <= $this->total) {
+        $recibido = is_numeric($this->montoRecibido) ? (float) $this->montoRecibido : 0.0;
+        if ($this->metodoPago !== 'efectivo' || $recibido <= $this->total || $recibido < 0) {
             return 0.0;
         }
 
-        return round($this->montoRecibido - $this->total, 2);
+        return round($recibido - $this->total, 2);
     }
 
     public function registrarVenta(): void
@@ -129,14 +139,16 @@ class DulceriaPos extends Component
             return;
         }
 
-        if ($this->montoRecibido < 0) {
+        $recibido = is_numeric($this->montoRecibido) ? (float) $this->montoRecibido : 0.0;
+
+        if ($recibido < 0) {
             $this->addError('montoRecibido', 'El monto recibido no puede ser un valor negativo.');
 
             return;
         }
 
-        if ($this->metodoPago === 'efectivo' && $this->montoRecibido < $totalFinal) {
-            $this->addError('montoRecibido', sprintf('Monto insuficiente: El efectivo recibido (S/ %.2f) es menor que el total de la venta (S/ %.2f).', $this->montoRecibido, $totalFinal));
+        if ($this->metodoPago === 'efectivo' && $recibido < $totalFinal) {
+            $this->addError('montoRecibido', sprintf('Monto insuficiente: El efectivo recibido (S/ %.2f) es menor que el total de la venta (S/ %.2f).', $recibido, $totalFinal));
 
             return;
         }
@@ -227,7 +239,7 @@ class DulceriaPos extends Component
             'items' => $itemsSnapshot,
             'total' => $totalFinal,
             'metodo' => $metodoSeleccionado,
-            'monto_recibido' => $this->montoRecibido,
+            'monto_recibido' => $recibido,
             'vuelto' => $this->vuelto,
         ];
 

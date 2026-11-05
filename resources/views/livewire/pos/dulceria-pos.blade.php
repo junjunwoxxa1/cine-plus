@@ -251,27 +251,46 @@
 
                 {{-- Cálculo de Vuelto si es Efectivo --}}
                 @if ($metodoPago === 'efectivo')
-                    <div class="grid grid-cols-2 gap-2 pt-1 bg-gray-950/60 p-2.5 rounded-xl border border-gray-800">
-                        <div>
-                            <label class="text-[9px] font-bold text-gray-400 uppercase block">Paga con S/</label>
-                            <input type="number" step="0.5" wire:model.live="montoRecibido" placeholder="0.00"
-                                class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono font-bold focus:outline-none focus:border-red-500">
+                    <div class="space-y-1">
+                        <div class="grid grid-cols-2 gap-2 pt-1 bg-gray-950/60 p-2.5 rounded-xl border {{ is_numeric($montoRecibido) && (float) $montoRecibido < 0 ? 'border-red-500' : 'border-gray-800' }}">
+                            <div>
+                                <label class="text-[9px] font-bold text-gray-400 uppercase block">Paga con S/</label>
+                                <input type="number" step="0.5" min="0" wire:model.live.debounce.300ms="montoRecibido" placeholder="0.00"
+                                    class="w-full bg-gray-900 border {{ is_numeric($montoRecibido) && (float) $montoRecibido < 0 ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-700' }} rounded-lg px-2.5 py-1 text-xs text-white font-mono font-bold focus:outline-none focus:border-red-500">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-gray-400 uppercase block">Vuelto / Cambio</label>
+                                <span class="text-sm font-black text-green-400 font-mono block pt-1">
+                                    S/ {{ number_format($this->vuelto, 2) }}
+                                </span>
+                            </div>
                         </div>
-                        <div>
-                            <label class="text-[9px] font-bold text-gray-400 uppercase block">Vuelto / Cambio</label>
-                            <span class="text-sm font-black text-green-400 font-mono block pt-1">
-                                S/ {{ number_format($this->vuelto, 2) }}
-                            </span>
-                        </div>
+                        @if (is_numeric($montoRecibido) && (float) $montoRecibido < 0)
+                            <p class="text-[11px] font-bold text-red-400 flex items-center gap-1 px-1">
+                                <span>⚠️</span> No se permiten montos negativos.
+                            </p>
+                        @endif
+                        @error('montoRecibido')
+                            <p class="text-[11px] font-bold text-red-400 flex items-center gap-1 px-1">
+                                <span>⚠️</span> {{ $message }}
+                            </p>
+                        @enderror
                     </div>
                 @endif
             </div>
 
+            @php
+                $esMontoInvalido = $metodoPago === 'efectivo' && is_numeric($montoRecibido) && (float) $montoRecibido < 0;
+            @endphp
             {{-- Botón Cobrar --}}
             <button type="button" wire:click="registrarVenta"
-                @if (empty($carrito)) disabled @endif
-                class="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed border border-red-500 text-white py-3.5 px-4 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all shadow-xl shadow-red-900/40 cursor-pointer">
-                REGISTRAR VENTA Y COBRAR (S/ {{ number_format($this->total, 2) }})
+                @if (empty($carrito) || $esMontoInvalido) disabled @endif
+                class="w-full {{ $esMontoInvalido ? 'bg-red-950/60 border-red-800 text-red-300' : 'bg-red-600 hover:bg-red-500 border-red-500 text-white shadow-xl shadow-red-900/40' }} disabled:opacity-40 disabled:cursor-not-allowed border py-3.5 px-4 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all cursor-pointer">
+                @if ($esMontoInvalido)
+                    ⛔ MONTO INVÁLIDO (VALOR NEGATIVO)
+                @else
+                    REGISTRAR VENTA Y COBRAR (S/ {{ number_format($this->total, 2) }})
+                @endif
             </button>
 
         </div>
