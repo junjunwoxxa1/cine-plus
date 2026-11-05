@@ -116,14 +116,14 @@
             <div class="grid grid-cols-2 gap-4">
                 <flux:field>
                     <flux:label>Número de Filas (A, B, C...)</flux:label>
-                    <flux:input type="number" wire:model.live="filas" min="1" max="26" required />
+                    <flux:input type="number" wire:model.live.debounce.300ms="filas" min="1" max="26" required />
                     <flux:description>Máx. 26 letras del abecedario</flux:description>
                     <flux:error name="filas" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>Columnas por Fila</flux:label>
-                    <flux:input type="number" wire:model.live="asientos_por_fila" min="1" max="30" required />
+                    <flux:input type="number" wire:model.live.debounce.300ms="asientos_por_fila" min="1" max="30" required />
                     <flux:description>Ej. 10 asientos por fila</flux:description>
                     <flux:error name="asientos_por_fila" />
                 </flux:field>
@@ -141,6 +141,11 @@
                 @endif
             </flux:field>
 
+            @php
+                $fActual = is_numeric($filas) ? max(0, (int) $filas) : 0;
+                $cActual = is_numeric($asientos_por_fila) ? max(0, (int) $asientos_por_fila) : 0;
+                $letraFin = $fActual > 0 ? (range('A', 'Z')[min(25, max(0, $fActual - 1))]) : 'A';
+            @endphp
             <div class="p-3.5 bg-zinc-950 border rounded-xl text-xs space-y-2 {{ $this->totalButacas >= 30 && $this->totalButacas <= 300 ? 'border-zinc-800' : 'border-red-600/60 bg-red-950/20' }}">
                 <div class="flex items-center justify-between">
                     <span class="text-zinc-400 font-semibold flex items-center gap-1.5">
@@ -153,8 +158,8 @@
                 </div>
 
                 <div class="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/60 text-zinc-400">
-                    <span>Dimensiones: <strong class="text-zinc-200">{{ (int) $filas }} filas × {{ (int) $asientos_por_fila }} columnas</strong></span>
-                    <span class="font-mono text-zinc-500">(Fila A-1 a {{ range('A', 'Z')[max(0, min(25, (int) $filas - 1))] }}-{{ (int) $asientos_por_fila }})</span>
+                    <span>Dimensiones: <strong class="text-zinc-200">{{ $fActual }} filas × {{ $cActual }} columnas</strong></span>
+                    <span class="font-mono text-zinc-500">(Fila A-1 a {{ $letraFin }}-{{ $cActual }})</span>
                 </div>
 
                 @if ($this->totalButacas >= 30 && $this->totalButacas <= 300)

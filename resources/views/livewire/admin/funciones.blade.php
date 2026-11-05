@@ -750,10 +750,10 @@
             <flux:subheading>Selecciona la película, el cine/sala, la plantilla de butacas y el horario.</flux:subheading>
         </div>
 
-        <form wire:submit="guardar" class="space-y-4">
+        <form wire:submit.prevent="guardar" onsubmit="return false;" class="space-y-4">
             <flux:field>
                 <flux:label>Película</flux:label>
-                <select wire:model="pelicula_id" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-sm text-zinc-200" required>
+                <select wire:model.live="pelicula_id" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-sm text-zinc-200" required>
                     <option value="">Selecciona película</option>
                     @foreach ($peliculas as $p)
                         <option value="{{ $p->id }}">{{ $p->titulo }} ({{ $p->duracion_formateada }})</option>
@@ -824,15 +824,20 @@
                                 }
                             } catch (\Exception $e) {}
                         }
+
+                        $conflictoTexto = $errorConflicto ?: ($conflictoEnVivo ? "La sala ya está ocupada por «{$conflictoEnVivo->pelicula->titulo}» de {$conflictoEnVivo->fecha_hora->format('H:i')} a {$conflictoEnVivo->fecha_fin_limpieza->format('H:i')} hrs (incluye 15 min de limpieza)." : null);
                     @endphp
 
-                    @if ($conflictoEnVivo)
-                        <div class="text-[11px] font-bold text-red-300 bg-red-950/90 border border-red-600 rounded-lg p-2.5 mt-2 flex items-start gap-2 shadow-md">
-                            <span class="text-base leading-none">⛔</span>
-                            <div>
-                                <span class="block text-red-200 font-bold">¡Conflicto de Horario en esta Sala!</span>
-                                <span class="font-normal text-red-300 text-[11px] leading-tight block mt-0.5">
-                                    La sala ya está ocupada por <strong>«{{ $conflictoEnVivo->pelicula->titulo }}»</strong> de <strong>{{ $conflictoEnVivo->fecha_hora->format('H:i') }}</strong> a <strong>{{ $conflictoEnVivo->fecha_fin_limpieza->format('H:i') }} hrs</strong> (proyección hasta {{ $conflictoEnVivo->fecha_fin_pelicula->format('H:i') }} + 15 min de limpieza).
+                    @if ($conflictoTexto)
+                        <div class="text-xs font-bold text-red-200 bg-red-950/90 border border-red-500 rounded-xl p-3 mt-2 flex items-start gap-2.5 shadow-lg">
+                            <span class="text-xl leading-none">⛔</span>
+                            <div class="space-y-1">
+                                <span class="block text-red-300 font-extrabold uppercase tracking-wide text-[11px]">¡Horario No Disponible en esta Sala!</span>
+                                <span class="font-normal text-red-200 text-xs leading-relaxed block">
+                                    {{ $conflictoTexto }}
+                                </span>
+                                <span class="text-amber-300 text-[11px] font-semibold block mt-0.5">
+                                    👉 Elige una de las recomendaciones sugeridas abajo o cambia la hora/sala.
                                 </span>
                             </div>
                         </div>
@@ -905,44 +910,49 @@
 
             @if (!$funcionId)
                 <!-- Programación rápida de múltiples horarios en el mismo día -->
-                <div class="bg-zinc-950/80 border border-zinc-800 rounded-xl p-3.5 space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-zinc-300">⚡ ¿Agregar más horarios el mismo día en esta sala? (Opcional)</span>
-                        <span class="text-[11px] text-zinc-500">Horarios en rojo ya están ocupados</span>
-                    </div>
-                    <div class="flex flex-wrap gap-1.5">
-                        @php
-                            $fechaDiaSolo = !empty($fecha_hora) ? \Carbon\Carbon::parse($fecha_hora)->format('Y-m-d') : today()->format('Y-m-d');
-                        @endphp
-                        @foreach (['13:00', '14:30', '16:00', '17:30', '19:00', '20:30', '22:00'] as $horaSugerida)
-                            @php
-                                $candidatoSugerido = \Carbon\Carbon::parse($fechaDiaSolo . ' ' . $horaSugerida);
-                                $conflictoSugerido = $horariosOcupadosModal->first(fn($f) => $f->colisionaCon($candidatoSugerido, $duracionActual));
-                            @endphp
-                            @if ($conflictoSugerido)
-                                <button type="button" disabled title="Ocupado por {{ $conflictoSugerido->pelicula->titulo }} ({{ $conflictoSugerido->fecha_hora->format('H:i') }} a {{ $conflictoSugerido->fecha_fin_limpieza->format('H:i') }})"
-                                    class="px-2.5 py-1 rounded-lg bg-red-950/90 border border-red-500 text-xs font-mono font-bold text-red-300 opacity-90 cursor-not-allowed flex items-center gap-1 shadow-sm">
-                                    <span>⛔</span>
-                                    <span>{{ $horaSugerida }} (Ocupado)</span>
-                                </button>
-                            @else
-                                <button type="button" wire:click="agregarHorarioExtra('{{ $horaSugerida }}')"
-                                    class="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-mono text-zinc-300 hover:text-white cursor-pointer">
-                                    + {{ $horaSugerida }}
-                                </button>
-                            @endif
-                        @endforeach
+                <div class="bg-zinc-950/80 border border-zinc-800 rounded-xl p-3.5 space-y-3 shadow-md">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <div>
+                            <span class="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                                <span>⚡</span>
+                                <span>¿Agregar más horarios el mismo día en esta sala? (Opcional)</span>
+                            </span>
+                            <p class="text-[11px] text-zinc-400 mt-0.5">
+                                Horarios recomendados sin solapamiento para «<strong>{{ $peliculaSeleccionada?->titulo }}</strong>» ({{ $duracionPeliculaFormato }} + 0:15 hrs limpieza = {{ $duracionTotalConLimpieza }}):
+                            </p>
+                        </div>
+                        <span class="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded self-start sm:self-auto">
+                            Clic para añadir
+                        </span>
                     </div>
 
-                    @if (!empty($horariosAdicionales))
-                        <div class="flex flex-wrap items-center gap-2 pt-1">
-                            <span class="text-[11px] text-zinc-400">Horarios extra a crear:</span>
-                            @foreach ($horariosAdicionales as $idx => $hExtra)
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-600/20 border border-red-500/40 text-xs font-mono font-bold text-red-300">
-                                    {{ $hExtra }} hrs
-                                    <button type="button" wire:click="quitarHorarioExtra({{ $idx }})" class="hover:text-white cursor-pointer">×</button>
-                                </span>
+                    @if (!empty($horariosSugeridosMismoDia))
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($horariosSugeridosMismoDia as $horaSugerida)
+                                <button type="button" wire:click="agregarHorarioExtra('{{ $horaSugerida }}')"
+                                    class="px-2.5 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-600 border border-emerald-500/50 hover:border-emerald-400 text-xs font-mono font-bold text-emerald-300 hover:text-white cursor-pointer transition-all flex items-center gap-1 shadow-sm">
+                                    <span>+</span>
+                                    <span>{{ $horaSugerida }} hrs</span>
+                                </button>
                             @endforeach
+                        </div>
+                    @else
+                        <div class="text-[11px] text-zinc-500 italic bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
+                            No hay más franjas libres con la duración requerida ({{ $duracionTotalConLimpieza }}) en esta sala para este día.
+                        </div>
+                    @endif
+
+                    @if (!empty($horariosAdicionales))
+                        <div class="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                            <span class="text-[11px] text-amber-300 font-semibold block">Horarios adicionales seleccionados (se crearán junto con la función principal):</span>
+                            <div class="flex flex-wrap items-center gap-2">
+                                @foreach ($horariosAdicionales as $idx => $hExtra)
+                                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-600/20 border border-red-500/50 text-xs font-mono font-bold text-red-300 shadow-sm">
+                                        <span>🕒 {{ $hExtra }} hrs</span>
+                                        <button type="button" wire:click="quitarHorarioExtra({{ $idx }})" title="Quitar este horario adicional" class="text-red-400 hover:text-white font-black cursor-pointer text-sm leading-none">×</button>
+                                    </span>
+                                @endforeach
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -962,11 +972,21 @@
                 </flux:field>
             </div>
 
-            <div class="flex justify-end gap-2 pt-4">
-                <flux:button variant="subtle" wire:click="$set('modalAbierto', false)">Cancelar</flux:button>
-                <flux:button variant="primary" type="submit" wire:loading.attr="disabled" wire:target="guardar">
-                    {{ $funcionId ? 'Guardar Cambios' : 'Programar Función' }}
-                </flux:button>
+            <div class="flex items-center justify-between gap-2 pt-4 border-t border-zinc-800">
+                <flux:button variant="subtle" type="button" wire:click="$set('modalAbierto', false)">Cancelar</flux:button>
+                <div>
+                    @if ($conflictoTexto)
+                        <button type="button" disabled
+                            class="px-4 py-2 rounded-xl bg-red-950/80 border border-red-500/60 text-red-300 font-bold text-xs cursor-not-allowed opacity-90 flex items-center gap-1.5 shadow-sm">
+                            <span>⛔</span>
+                            <span>No disponible en este horario</span>
+                        </button>
+                    @else
+                        <flux:button variant="primary" type="button" wire:click="guardar" wire:loading.attr="disabled" wire:target="guardar">
+                            {{ $funcionId ? 'Guardar Cambios' : 'Programar Función' }}
+                        </flux:button>
+                    @endif
+                </div>
             </div>
         </form>
     </flux:modal>
@@ -1000,13 +1020,13 @@
             <div class="grid grid-cols-2 gap-4">
                 <flux:field>
                     <flux:label>Filas (A, B, C...)</flux:label>
-                    <flux:input type="number" wire:model.live="sala_filas" min="1" max="26" required />
+                    <flux:input type="number" wire:model.live.debounce.300ms="sala_filas" min="1" max="26" required />
                     <flux:error name="sala_filas" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>Columnas por Fila</flux:label>
-                    <flux:input type="number" wire:model.live="sala_asientos_por_fila" min="1" max="30" required />
+                    <flux:input type="number" wire:model.live.debounce.300ms="sala_asientos_por_fila" min="1" max="30" required />
                     <flux:error name="sala_asientos_por_fila" />
                 </flux:field>
             </div>
@@ -1023,9 +1043,22 @@
                 @endif
             </flux:field>
 
-            <div class="p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-300">
-                Matriz base: <strong class="text-white font-mono">{{ (int) $sala_filas * (int) $sala_asientos_por_fila }} posiciones</strong>
-                (Filas A hasta {{ range('A', 'Z')[max(0, min(25, (int) $sala_filas - 1))] }}, {{ (int) $sala_asientos_por_fila }} columnas).
+            @php
+                $sfActual = is_numeric($sala_filas) ? max(0, (int) $sala_filas) : 0;
+                $scActual = is_numeric($sala_asientos_por_fila) ? max(0, (int) $sala_asientos_por_fila) : 0;
+                $totalPos = $sfActual * $scActual;
+                $letraFinSala = $sfActual > 0 ? (range('A', 'Z')[min(25, max(0, $sfActual - 1))]) : 'A';
+            @endphp
+            <div class="p-3 bg-zinc-950 border {{ $totalPos >= 30 && $totalPos <= 300 ? 'border-zinc-800' : 'border-red-600/70 bg-red-950/20' }} rounded-xl text-xs space-y-1">
+                <div class="flex items-center justify-between">
+                    <span class="text-zinc-300">Matriz base: <strong class="text-white font-mono">{{ $totalPos }} posiciones</strong></span>
+                    <span class="font-mono font-bold {{ $totalPos >= 30 && $totalPos <= 300 ? 'text-emerald-400' : 'text-red-400' }}">
+                        {{ $totalPos >= 30 && $totalPos <= 300 ? '✅ Rango válido (30-300)' : '⛔ Rango no válido (mín. 30, máx. 300)' }}
+                    </span>
+                </div>
+                <div class="text-[11px] text-zinc-400">
+                    (Filas A hasta {{ $letraFinSala }}, {{ $scActual }} columnas).
+                </div>
             </div>
 
             <div class="flex justify-end gap-2 pt-2">

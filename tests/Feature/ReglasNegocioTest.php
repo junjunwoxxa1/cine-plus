@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Admin\Funciones;
 use App\Livewire\Admin\Salas;
 use App\Models\Funcion;
 use App\Models\Pelicula;
@@ -81,4 +82,59 @@ test('pasarela de pagos rechaza tarjeta de prueba con saldo insuficiente termina
     ]);
 
     $response->assertSessionHasErrors(['numero_tarjeta']);
+});
+
+test('componente de salas tolera valores vacios o texto durante la edicion reactiva sin error 500', function () {
+    $admin = User::first() ?? User::factory()->create(['rol' => 'administrador']);
+    $this->actingAs($admin);
+
+    Livewire::test(Salas::class)
+        ->set('filas', '')
+        ->set('asientos_por_fila', '')
+        ->assertSet('filas', '')
+        ->assertSet('asientos_por_fila', '');
+});
+
+test('programador de funciones detecta colisiones y mantiene el modal abierto con alerta explicita', function () {
+    $this->seed();
+
+    $admin = User::first() ?? User::factory()->create(['rol' => 'administrador']);
+    $this->actingAs($admin);
+
+    $funcion = Funcion::first();
+    expect($funcion)->not->toBeNull();
+
+    // Intentar crear otra función en la misma sala, mismo día y misma hora exacta
+    Livewire::test(Funciones::class)
+        ->call('crear', $funcion->sala_id, $funcion->pelicula_id)
+        ->set('fecha_hora', $funcion->fecha_hora->format('Y-m-d\TH:i'))
+        ->call('guardar')
+        ->assertSet('modalAbierto', true)
+        ->assertHasErrors(['fecha_hora']);
+});
+
+test('sugerencias de horarios para el mismo dia no incluyen el horario principal ni los ya seleccionados', function () {
+    $this->seed();
+
+    $admin = User::first() ?? User::factory()->create(['rol' => 'administrador']);
+    $this->actingAs($admin);
+
+    $funcion = Funcion::first();
+    expect($funcion)->not->toBeNull();
+
+    $component = Livewire::test(Funciones::class)
+        ->call('crear', $funcion->sala_id, $funcion->pelicula_id)
+        ->set('fecha_hora', $funcion->fecha_hora->format('Y-m-d\TH:i'));
+
+    $horaPrincipal = $funcion->fecha_hora->format('H:i');
+    $sugeridos = $component->instance()->calcularHorariosSugeridosParaMismoDia();
+
+    expect($sugeridos)->not->toContain($horaPrincipal);
+
+    if (! empty($sugeridos)) {
+        $primeraSugerida = $sugeridos[0];
+        $component->call('agregarHorarioExtra', $primeraSugerida);
+        $sugeridosDespues = $component->instance()->calcularHorariosSugeridosParaMismoDia();
+        expect($sugeridosDespues)->not->toContain($primeraSugerida);
+    }
 });

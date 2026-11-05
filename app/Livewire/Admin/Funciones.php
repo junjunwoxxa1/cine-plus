@@ -45,13 +45,15 @@ class Funciones extends Component
 
     public $precio = 25.00;
 
-    public int $precio_puntos = 250;
+    public $precio_puntos = 250;
 
     public string $plantilla_funcion = 'heredar';
 
     public array $horariosAdicionales = [];
 
     public string $nuevoHorarioExtra = '';
+
+    public ?string $errorConflicto = null;
 
     // Modal Mapa Interactivo de Butacas y Plantillas de Forma
     public bool $modalButacas = false;
@@ -71,9 +73,9 @@ class Funciones extends Component
 
     public string $sala_sede = 'Cine+ Alcázar (Miraflores)';
 
-    public int $sala_filas = 5;
+    public $sala_filas = 5;
 
-    public int $sala_asientos_por_fila = 10;
+    public $sala_asientos_por_fila = 10;
 
     public string $sala_plantilla = 'clasica';
 
@@ -88,6 +90,55 @@ class Funciones extends Component
             'precio' => 'required|numeric|min:1',
             'precio_puntos' => 'required|integer|min:0',
         ];
+    }
+
+    public function updatedPeliculaId(): void
+    {
+        $this->verificarConflictoEnVivo();
+    }
+
+    public function updatedSalaId(): void
+    {
+        $this->verificarConflictoEnVivo();
+    }
+
+    public function updatedFechaHora(): void
+    {
+        $this->verificarConflictoEnVivo();
+    }
+
+    public function verificarConflictoEnVivo(): void
+    {
+        $this->errorConflicto = null;
+
+        if (! $this->modalAbierto || ! $this->sala_id || empty($this->fecha_hora) || ! $this->pelicula_id) {
+            return;
+        }
+
+        try {
+            $dtInicio = Carbon::parse($this->fecha_hora);
+            $fechaDia = $dtInicio->format('Y-m-d');
+            $pelicula = Pelicula::find($this->pelicula_id);
+            $duracion = (int) ($pelicula?->duracion ?: 120);
+
+            $funcionesDelDia = Funcion::with('pelicula')
+                ->where('sala_id', $this->sala_id)
+                ->whereDate('fecha_hora', $fechaDia)
+                ->when($this->funcionId, fn ($q) => $q->where('id', '!=', $this->funcionId))
+                ->get();
+
+            $conflicto = $funcionesDelDia->first(fn ($item) => $item->colisionaCon($dtInicio, $duracion));
+
+            if ($conflicto) {
+                $this->errorConflicto = sprintf(
+                    'La sala ya está ocupada por «%s» de %s a %s hrs (incluye 15 min de limpieza).',
+                    $conflicto->pelicula->titulo,
+                    $conflicto->fecha_hora->format('H:i'),
+                    $conflicto->fecha_fin_limpieza->format('H:i')
+                );
+            }
+        } catch (\Exception $e) {
+        }
     }
 
     public function updatedFiltroSede(): void
@@ -145,6 +196,7 @@ class Funciones extends Component
         try {
             $fecha = ! empty($this->fecha_hora) ? Carbon::parse($this->fecha_hora)->format('Y-m-d') : today()->format('Y-m-d');
             $this->fecha_hora = Carbon::parse($fecha.' '.$hora)->format('Y-m-d\TH:i');
+            $this->verificarConflictoEnVivo();
             Flux::toast(variant: 'success', text: "Horario {$hora} hrs asignado a la función.");
         } catch (\Exception $e) {
         }
@@ -218,6 +270,141 @@ class Funciones extends Component
         }
     }
 
+    /**
+     * Calcula sugerencias de horarios para añadir en el mismo día, basadas en la duración
+     * de la película seleccionada y asegurando que no solapen con el horario principal,
+     * funciones existentes o horarios adicionales ya elegidos.
+     */
+    public function calcularHorariosSugeridosParaMismoDia(): array
+    {
+        if (! $this->modalAbierto || ! $this->sala_id || empty($this->fecha_hora) || ! $this->pelicula_id) {
+            return [];
+        }
+
+        try {
+            $dtPrincipal = Carbon::parse($this->fecha_hora);
+            $fechaDia = $dtPrincipal->format('Y-m-d');
+            $horaPrincipal = $dtPrincipal->format('H:i');
+            $pelicula = Pelicula::find($this->pelicula_id);
+            $duracion = (int) ($pelicula?->duracion ?: 120);
+            $duracionTotalBloque = $duracion + Funcion::recesoLimpiezaMinutos();
+
+            $funcionesOcupadas = Funcion::with('pelicula')
+                ->where('sala_id', $this->sala_id)
+                ->whereDate('fecha_hora', $fechaDia)
+                ->when($this->funcionId, fn ($q) => $q->where('id', '!=', $this->funcionId))
+                ->orderBy('fecha_hora', 'asc')
+                ->get();
+
+            $candidatos = [];
+
+            // 1. Proyección hacia adelante desde la función principal
+            $forward = $dtPrincipal->copy();
+            for ($k = 0; $k < 6; $k++) {
+                $forward->addMinutes($duracionTotalBloque);
+                $min = (int) $forward->minute;
+                $resto = $min % 5;
+                if ($resto !== 0) {
+                    $forward->addMinutes(5 - $resto);
+                }
+                if ($forward->format('Y-m-d') === $fechaDia && (int) $forward->format('H') <= 23) {
+                    $candidatos[] = $forward->format('H:i');
+                } else {
+                    break;
+                }
+            }
+
+            // 2. Proyección hacia atrás desde la función principal
+            $backward = $dtPrincipal->copy();
+            for ($k = 0; $k < 6; $k++) {
+                $backward->subMinutes($duracionTotalBloque);
+                $min = (int) $backward->minute;
+                $resto = $min % 5;
+                if ($resto !== 0) {
+                    $backward->subMinutes($resto);
+                }
+                if ($backward->format('Y-m-d') === $fechaDia && (int) $backward->format('H') >= 11) {
+                    $candidatos[] = $backward->format('H:i');
+                } else {
+                    break;
+                }
+            }
+
+            // 3. Recomendaciones tras culminar las funciones ocupadas existentes en la sala
+            foreach ($funcionesOcupadas as $f) {
+                if ($f->fecha_fin_limpieza) {
+                    $cand = $f->fecha_fin_limpieza->copy();
+                    $min = (int) $cand->minute;
+                    $resto = $min % 5;
+                    if ($resto !== 0) {
+                        $cand->addMinutes(5 - $resto);
+                    }
+                    if ($cand->format('Y-m-d') === $fechaDia && (int) $cand->format('H') <= 23) {
+                        $candidatos[] = $cand->format('H:i');
+                    }
+                }
+            }
+
+            // 4. Franjas comerciales habituales de cine
+            $comerciales = ['12:30', '13:45', '14:30', '15:15', '16:00', '17:00', '18:15', '19:30', '20:15', '21:30', '22:15'];
+            foreach ($comerciales as $com) {
+                if (! in_array($com, $candidatos, true)) {
+                    $candidatos[] = $com;
+                }
+            }
+
+            // 5. Filtrar candidatos válidos
+            $sugeridos = [];
+            foreach ($candidatos as $hStr) {
+                if ($hStr === $horaPrincipal || in_array($hStr, $this->horariosAdicionales, true)) {
+                    continue;
+                }
+
+                $dtCandidato = Carbon::parse($fechaDia.' '.$hStr);
+                $finPrincipal = $dtPrincipal->copy()->addMinutes($duracionTotalBloque);
+                $finCandidato = $dtCandidato->copy()->addMinutes($duracionTotalBloque);
+
+                if ($dtCandidato->lt($finPrincipal) && $finCandidato->gt($dtPrincipal)) {
+                    continue;
+                }
+
+                $colisionaBD = false;
+                foreach ($funcionesOcupadas as $f) {
+                    if ($f->colisionaCon($dtCandidato, $duracion)) {
+                        $colisionaBD = true;
+                        break;
+                    }
+                }
+                if ($colisionaBD) {
+                    continue;
+                }
+
+                $colisionaExtras = false;
+                foreach ($this->horariosAdicionales as $hExtra) {
+                    $dtExtra = Carbon::parse($fechaDia.' '.$hExtra);
+                    $finExtra = $dtExtra->copy()->addMinutes($duracionTotalBloque);
+                    if ($dtCandidato->lt($finExtra) && $finCandidato->gt($dtExtra)) {
+                        $colisionaExtras = true;
+                        break;
+                    }
+                }
+                if ($colisionaExtras) {
+                    continue;
+                }
+
+                if (! in_array($hStr, $sugeridos, true)) {
+                    $sugeridos[] = $hStr;
+                }
+            }
+
+            sort($sugeridos);
+
+            return array_slice($sugeridos, 0, 10);
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
     public function quitarHorarioExtra(int $index): void
     {
         unset($this->horariosAdicionales[$index]);
@@ -229,6 +416,7 @@ class Funciones extends Component
         $this->guardando = false;
         $this->resetErrorBag();
         $this->resetValidation();
+        $this->errorConflicto = null;
         $this->reset(['funcionId', 'pelicula_id', 'sala_id', 'fecha_hora', 'horariosAdicionales', 'nuevoHorarioExtra']);
 
         $p = $peliculaPreseleccionada
@@ -251,6 +439,8 @@ class Funciones extends Component
         $this->precio = 25.00;
         $this->precio_puntos = 250;
         $this->modalAbierto = true;
+
+        $this->verificarConflictoEnVivo();
     }
 
     public function editar(int $id): void
@@ -265,7 +455,10 @@ class Funciones extends Component
         $this->plantilla_funcion = $f->plantilla ?: 'heredar';
         $this->horariosAdicionales = [];
         $this->nuevoHorarioExtra = '';
+        $this->errorConflicto = null;
         $this->modalAbierto = true;
+
+        $this->verificarConflictoEnVivo();
     }
 
     public function guardar(): void
@@ -303,13 +496,16 @@ class Funciones extends Component
 
                 if ($conflicto) {
                     $msgConflicto = sprintf(
-                        'Conflicto de horario: La sala ya está ocupada por «%s» de %s a %s hrs (incluye 15 min de limpieza).',
+                        'No se puede programar a las %s hrs: La sala ya está ocupada por «%s» de %s a %s (incluye 15 min de limpieza).',
+                        $dtPrincipal->format('H:i'),
                         $conflicto->pelicula->titulo,
                         $conflicto->fecha_hora->format('H:i'),
                         $conflicto->fecha_fin_limpieza->format('H:i')
                     );
-                    Flux::toast(variant: 'danger', text: $msgConflicto);
+                    $this->errorConflicto = $msgConflicto;
                     $this->addError('fecha_hora', $msgConflicto);
+                    Flux::toast(variant: 'danger', text: $msgConflicto);
+                    $this->modalAbierto = true;
 
                     return;
                 }
@@ -367,8 +563,10 @@ class Funciones extends Component
                                 $dt2->format('H:i'),
                                 Funcion::minutosAHorasFormato($duracionPelicula)
                             );
-                            Flux::toast(variant: 'danger', text: $msg);
+                            $this->errorConflicto = $msg;
                             $this->addError('fecha_hora', $msg);
+                            Flux::toast(variant: 'danger', text: $msg);
+                            $this->modalAbierto = true;
 
                             return;
                         }
@@ -391,8 +589,10 @@ class Funciones extends Component
                             $conflicto->fecha_hora->format('H:i'),
                             $conflicto->fecha_fin_limpieza->format('H:i')
                         );
-                        Flux::toast(variant: 'danger', text: $msg);
+                        $this->errorConflicto = $msg;
                         $this->addError('fecha_hora', $msg);
+                        Flux::toast(variant: 'danger', text: $msg);
+                        $this->modalAbierto = true;
 
                         return;
                     }
@@ -709,6 +909,24 @@ class Funciones extends Component
             'sala_plantilla' => 'required|string|max:50',
         ]);
 
+        $filasNum = (int) $this->sala_filas;
+        $colsNum = (int) $this->sala_asientos_por_fila;
+        $totalButacas = $filasNum * $colsNum;
+
+        if ($totalButacas < 30) {
+            $this->addError('sala_filas', "La sala debe tener un mínimo de 30 butacas totales (actualmente {$totalButacas}).");
+            Flux::toast(variant: 'danger', text: "Límite insuficiente: Se requieren mínimo 30 butacas (actual: {$totalButacas}).");
+
+            return;
+        }
+
+        if ($totalButacas > 300) {
+            $this->addError('sala_filas', "La sala no puede exceder las 300 butacas totales (actualmente {$totalButacas}).");
+            Flux::toast(variant: 'danger', text: "Límite excedido: Máximo 300 butacas (actual: {$totalButacas}).");
+
+            return;
+        }
+
         $duplicado = Sala::where('sede', $this->sala_sede)
             ->where('numero_sala', $this->sala_numero)
             ->where('id', '!=', $this->editSalaId)
@@ -990,6 +1208,8 @@ class Funciones extends Component
         // Horarios ya creados/ocupados en la sala seleccionada para la fecha actual del modal
         $horariosOcupadosModal = collect();
         $horariosRecomendadosModal = [];
+        $horariosSugeridosMismoDia = [];
+
         if ($this->modalAbierto && $this->sala_id && $this->fecha_hora !== '') {
             try {
                 $fechaDiaModal = Carbon::parse($this->fecha_hora)->format('Y-m-d');
@@ -1001,6 +1221,7 @@ class Funciones extends Component
                     ->get();
 
                 $horariosRecomendadosModal = $this->calcularHorariosRecomendados();
+                $horariosSugeridosMismoDia = $this->calcularHorariosSugeridosParaMismoDia();
             } catch (\Exception $e) {
                 // Formato de fecha en edición
             }
@@ -1023,6 +1244,7 @@ class Funciones extends Component
             'mapaConfigModal' => $mapaConfigModal,
             'horariosOcupadosModal' => $horariosOcupadosModal,
             'horariosRecomendadosModal' => $horariosRecomendadosModal,
+            'horariosSugeridosMismoDia' => $horariosSugeridosMismoDia,
         ]);
     }
 }

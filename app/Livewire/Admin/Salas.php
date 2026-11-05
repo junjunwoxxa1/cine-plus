@@ -27,9 +27,9 @@ class Salas extends Component
 
     public string $sede = 'Cine+ Alcázar (Miraflores)';
 
-    public int $filas = 5;
+    public $filas = 5;
 
-    public int $asientos_por_fila = 10;
+    public $asientos_por_fila = 10;
 
     public string $plantilla = 'clasica';
 
@@ -48,7 +48,10 @@ class Salas extends Component
 
     public function getTotalButacasProperty(): int
     {
-        return (int) $this->filas * (int) $this->asientos_por_fila;
+        $f = is_numeric($this->filas) ? (int) $this->filas : 0;
+        $c = is_numeric($this->asientos_por_fila) ? (int) $this->asientos_por_fila : 0;
+
+        return max(0, $f * $c);
     }
 
     public function mount(): void

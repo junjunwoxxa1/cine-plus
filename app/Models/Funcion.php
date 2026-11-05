@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -87,7 +87,7 @@ class Funcion extends Model
     /**
      * Fecha y hora en que culmina la proyección de la película.
      */
-    public function getFechaFinPeliculaAttribute(): ?Carbon
+    public function getFechaFinPeliculaAttribute(): ?CarbonInterface
     {
         return $this->fecha_hora ? $this->fecha_hora->copy()->addMinutes($this->duracion_minutos) : null;
     }
@@ -95,7 +95,7 @@ class Funcion extends Model
     /**
      * Fecha y hora en que culmina el receso de limpieza y la sala queda libre para la siguiente función.
      */
-    public function getFechaFinLimpiezaAttribute(): ?Carbon
+    public function getFechaFinLimpiezaAttribute(): ?CarbonInterface
     {
         return $this->fecha_hora ? $this->fecha_hora->copy()->addMinutes($this->duracion_total_minutos) : null;
     }
@@ -103,7 +103,7 @@ class Funcion extends Model
     /**
      * Determina si un horario propuesto se solapa con esta función (incluyendo sus 15 min de limpieza).
      */
-    public function colisionaCon(Carbon $inicioPropuesto, int $duracionPropuestaMinutos): bool
+    public function colisionaCon(CarbonInterface $inicioPropuesto, int $duracionPropuestaMinutos): bool
     {
         if (! $this->fecha_hora) {
             return false;
