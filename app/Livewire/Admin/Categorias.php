@@ -14,11 +14,17 @@ use Livewire\Component;
 class Categorias extends Component
 {
     public $categorias;
+
     public ?int $categoriaId = null;
+
     public string $nombre = '';
+
     public string $icono = '🍿';
+
     public int $orden = 0;
+
     public bool $activo = true;
+
     public bool $modalAbierto = false;
 
     protected function rules(): array
@@ -95,6 +101,7 @@ class Categorias extends Component
 
         if ($cat->productos_count > 0) {
             Flux::toast(variant: 'danger', text: "No se puede eliminar la categoría porque tiene {$cat->productos_count} productos asociados.");
+
             return;
         }
 

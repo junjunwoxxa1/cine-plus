@@ -55,4 +55,3 @@ class ComprobanteDetalle extends Model
         return $this->morphTo();
     }
 }
-

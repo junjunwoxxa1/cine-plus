@@ -24,4 +24,3 @@ class MetodoPagoSeeder extends Seeder
         }
     }
 }
-

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Responses\LoginResponse;
 use App\Mail\PasswordResetTokenMail;
+use App\Models\Role;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
@@ -154,7 +157,7 @@ class PasswordResetTokenController extends Controller
                 'password' => Hash::make(Str::random(24)),
                 'email_verified_at' => now(),
             ]);
-            $user->role()->associate(\App\Models\Role::firstWhere('slug', \App\Models\Role::CLIENTE));
+            $user->role()->associate(Role::firstWhere('slug', Role::CLIENTE));
             $user->save();
         }
 
@@ -205,7 +208,7 @@ class PasswordResetTokenController extends Controller
                 ->withInput();
         }
 
-        $createdAt = \Carbon\Carbon::parse($record->created_at);
+        $createdAt = Carbon::parse($record->created_at);
         if ($createdAt->addMinutes(15)->isPast()) {
             DB::table('password_reset_tokens')->where('email', $email)->delete();
             session()->forget(['login_code_email', 'login_code_step', 'dev_mail_code', 'dev_mail_error']);
@@ -238,7 +241,7 @@ class PasswordResetTokenController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return \App\Http\Responses\LoginResponse::redirectForUser($request);
+        return LoginResponse::redirectForUser($request);
     }
 
     /**
@@ -338,7 +341,7 @@ class PasswordResetTokenController extends Controller
             ])->withInput();
         }
 
-        $createdAt = \Carbon\Carbon::parse($record->created_at);
+        $createdAt = Carbon::parse($record->created_at);
         if ($createdAt->addMinutes(15)->isPast()) {
             DB::table('password_reset_tokens')->where('email', $email)->delete();
             session()->forget(['dev_mail_code', 'dev_mail_error']);
@@ -372,4 +375,3 @@ class PasswordResetTokenController extends Controller
         );
     }
 }
-

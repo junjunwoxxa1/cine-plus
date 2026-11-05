@@ -18,11 +18,17 @@ class Sedes extends Component
 
     // Modal Crear / Editar Sede
     public bool $modalAbierto = false;
+
     public ?int $sedeId = null;
+
     public string $nombre = '';
+
     public string $ciudad = 'Lima';
+
     public string $direccion = '';
+
     public string $telefono = '';
+
     public bool $activo = true;
 
     protected function rules(): array
@@ -96,6 +102,7 @@ class Sedes extends Component
 
         if ($countSalas > 0) {
             Flux::toast(variant: 'danger', text: "No se puede eliminar la sede '{$sede->nombre}' porque tiene {$countSalas} sala(s) asociadas.");
+
             return;
         }
 

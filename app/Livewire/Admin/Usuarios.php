@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Configuracion;
 use App\Models\Role;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -18,13 +20,18 @@ class Usuarios extends Component
     use WithPagination;
 
     public string $busqueda = '';
+
     public string $filtroRol = '';
 
     // Modal para Gestión de Puntos Individuales (Cine vs Dulcería)
     public bool $modalPuntosAbierto = false;
+
     public ?int $usuarioPuntosId = null;
+
     public string $usuarioPuntosNombre = '';
+
     public int $puntos_cine_edit = 0;
+
     public int $puntos_dulceria_edit = 0;
 
     public function editarPuntos(int $userId): void
@@ -63,6 +70,7 @@ class Usuarios extends Component
 
         if ($usuario->id === Auth::id() && $usuario->isAdmin() && $roleId !== $usuario->role_id) {
             Flux::toast(variant: 'danger', text: 'No puedes quitarte el rol de Administrador a ti mismo.');
+
             return;
         }
 
@@ -74,7 +82,7 @@ class Usuarios extends Component
 
     public function togglePuntosSeparados(): void
     {
-        $nuevoEstado = \App\Models\Configuracion::togglePuntosSeparados();
+        $nuevoEstado = Configuracion::togglePuntosSeparados();
         if ($nuevoEstado) {
             Flux::toast(variant: 'success', text: 'Modalidad de Puntos Separados (Cine vs. Dulcería) ACTIVADA a nivel general.');
         } else {
@@ -93,7 +101,7 @@ class Usuarios extends Component
         }
 
         $nombre = $usuario->name;
-        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $usuario->email)->delete();
+        DB::table('password_reset_tokens')->where('email', $usuario->email)->delete();
         $usuario->delete();
 
         Flux::toast(variant: 'success', text: "Usuario {$nombre} eliminado correctamente.");
@@ -117,7 +125,7 @@ class Usuarios extends Component
         return view('livewire.admin.usuarios', [
             'usuarios' => $query->paginate(12),
             'roles' => Role::all(),
-            'puntosSeparadosActivo' => \App\Models\Configuracion::puntosSeparadosActivo(),
+            'puntosSeparadosActivo' => Configuracion::puntosSeparadosActivo(),
         ]);
     }
 }

@@ -72,10 +72,22 @@ class Pelicula extends Model
         });
 
         static::updating(function ($pelicula) {
-            if ($pelicula->isDirty('titulo') && !$pelicula->isDirty('slug')) {
+            if ($pelicula->isDirty('titulo') && ! $pelicula->isDirty('slug')) {
                 $pelicula->slug = Str::slug($pelicula->titulo);
             }
         });
+    }
+
+    /**
+     * Accesor para obtener la duración formateada en horas y minutos (ej. 99 min => '1:39 hrs').
+     */
+    public function getDuracionFormateadaAttribute(): string
+    {
+        $min = (int) ($this->duracion ?: 120);
+        $horas = intdiv($min, 60);
+        $restoMin = $min % 60;
+
+        return sprintf('%d:%02d hrs', $horas, $restoMin);
     }
 
     /**
@@ -102,7 +114,7 @@ class Pelicula extends Model
             return asset($img);
         }
 
-        return asset('storage/' . $img);
+        return asset('storage/'.$img);
     }
 
     /**

@@ -101,7 +101,7 @@ class Comprobante extends Model
     {
         try {
             $contenido = sprintf(
-                "CINE+ TICKET | Reserva: %s | Comprobante: %s-%s | Película: %s | Sala: %s | Asientos: %s | Total: S/ %.2f",
+                'CINE+ TICKET | Reserva: %s | Comprobante: %s-%s | Película: %s | Sala: %s | Asientos: %s | Total: S/ %.2f',
                 $this->codigo_reserva,
                 $this->serie,
                 $this->numero,
@@ -113,7 +113,7 @@ class Comprobante extends Model
 
             $renderer = new ImageRenderer(
                 new RendererStyle(200, 1),
-                new SvgImageBackEnd()
+                new SvgImageBackEnd
             );
 
             $writer = new Writer($renderer);
@@ -221,4 +221,3 @@ class Comprobante extends Model
         return null;
     }
 }
-

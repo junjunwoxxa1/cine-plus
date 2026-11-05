@@ -6,6 +6,7 @@ use App\Models\Butaca;
 use App\Models\Comprobante;
 use App\Models\Funcion;
 use App\Models\Producto;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -52,7 +53,8 @@ class CompraController extends Controller
             }
 
             if ($c->fecha_funcion) {
-                $fechaFuncion = \Carbon\Carbon::parse($c->fecha_funcion->format('Y-m-d H:i:s'), $tz);
+                $fechaFuncion = Carbon::parse($c->fecha_funcion->format('Y-m-d H:i:s'), $tz);
+
                 // Permanece activa mientras no haya pasado el día y el horario de la función (con margen de 3 horas de duración)
                 return $fechaFuncion->copy()->addHours(3)->isAfter($ahora);
             }

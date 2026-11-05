@@ -4,8 +4,11 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Mail\BienvenidaUserMail;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
@@ -49,11 +52,11 @@ class CreateNewUser implements CreatesNewUsers
 
         if (! empty($user->email)) {
             try {
-                \Illuminate\Support\Facades\Mail::mailer('smtp')
+                Mail::mailer('smtp')
                     ->to($user->email)
-                    ->send(new \App\Mail\BienvenidaUserMail($user));
+                    ->send(new BienvenidaUserMail($user));
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Error enviando correo de bienvenida a '.$user->email.': '.$e->getMessage());
+                Log::error('Error enviando correo de bienvenida a '.$user->email.': '.$e->getMessage());
             }
         }
 

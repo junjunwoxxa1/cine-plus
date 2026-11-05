@@ -6,6 +6,7 @@ use App\Models\Butaca;
 use App\Models\Funcion;
 use App\Models\Pelicula;
 use App\Models\Sala;
+use App\Models\Sede;
 use Carbon\Carbon;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
@@ -22,37 +23,60 @@ class Funciones extends Component
 
     // Filtros y modo de visualización
     public string $modoVista = 'cines'; // 'cines' | 'peliculas' | 'tabla'
+
     public string $filtroSede = '';
+
     public string $filtroSala = '';
+
     public string $filtroPelicula = '';
+
     public string $filtroFecha = '';
 
     // Modal Crear / Editar Función
     public bool $modalAbierto = false;
+
     public ?int $funcionId = null;
+
     public ?int $pelicula_id = null;
+
     public ?int $sala_id = null;
+
     public string $fecha_hora = '';
+
     public $precio = 25.00;
+
     public int $precio_puntos = 250;
+
     public string $plantilla_funcion = 'heredar';
+
     public array $horariosAdicionales = [];
+
     public string $nuevoHorarioExtra = '';
 
     // Modal Mapa Interactivo de Butacas y Plantillas de Forma
     public bool $modalButacas = false;
+
     public ?int $funcionButacasId = null;
+
     public string $modoClicMapa = 'ocupacion'; // 'ocupacion' | 'escaleras'
+
     public bool $aplicarPlantillaASala = true;
 
     // Modal Edición Rápida de Sala y Matriz de Butacas
     public bool $modalSala = false;
+
     public ?int $editSalaId = null;
+
     public string $sala_numero = '';
+
     public string $sala_sede = 'Cine+ Alcázar (Miraflores)';
+
     public int $sala_filas = 5;
+
     public int $sala_asientos_por_fila = 10;
+
     public string $sala_plantilla = 'clasica';
+
     public bool $guardando = false;
 
     protected function rules(): array
@@ -202,6 +226,9 @@ class Funciones extends Component
 
     public function crear(?int $salaPreseleccionada = null, ?int $peliculaPreseleccionada = null): void
     {
+        $this->guardando = false;
+        $this->resetErrorBag();
+        $this->resetValidation();
         $this->reset(['funcionId', 'pelicula_id', 'sala_id', 'fecha_hora', 'horariosAdicionales', 'nuevoHorarioExtra']);
 
         $p = $peliculaPreseleccionada
@@ -276,13 +303,14 @@ class Funciones extends Component
 
                 if ($conflicto) {
                     $msgConflicto = sprintf(
-                        "Conflicto de horario: La sala ya está ocupada por «%s» de %s a %s hrs (incluye 15 min de limpieza).",
+                        'Conflicto de horario: La sala ya está ocupada por «%s» de %s a %s hrs (incluye 15 min de limpieza).',
                         $conflicto->pelicula->titulo,
                         $conflicto->fecha_hora->format('H:i'),
                         $conflicto->fecha_fin_limpieza->format('H:i')
                     );
                     Flux::toast(variant: 'danger', text: $msgConflicto);
                     $this->addError('fecha_hora', $msgConflicto);
+
                     return;
                 }
 
@@ -334,13 +362,14 @@ class Funciones extends Component
                         $fin2 = $dt2->copy()->addMinutes($duracionPelicula + Funcion::recesoLimpiezaMinutos());
                         if ($dt1->lt($fin2) && $fin1->gt($dt2)) {
                             $msg = sprintf(
-                                "Conflicto interno entre horarios seleccionados (%s y %s). Cada función requiere %d min de proyección + 15 min de limpieza.",
+                                'Conflicto interno entre horarios seleccionados (%s y %s). Cada función requiere %s de proyección + 0:15 hrs de limpieza.',
                                 $dt1->format('H:i'),
                                 $dt2->format('H:i'),
-                                $duracionPelicula
+                                Funcion::minutosAHorasFormato($duracionPelicula)
                             );
                             Flux::toast(variant: 'danger', text: $msg);
                             $this->addError('fecha_hora', $msg);
+
                             return;
                         }
                     }
@@ -356,7 +385,7 @@ class Funciones extends Component
                     $conflicto = $funcionesDelDia->first(fn ($item) => $item->colisionaCon($dt, $duracionPelicula));
                     if ($conflicto) {
                         $msg = sprintf(
-                            "No se puede programar a las %s hrs: La sala ya está ocupada por «%s» de %s a %s (incluye 15 min de limpieza).",
+                            'No se puede programar a las %s hrs: La sala ya está ocupada por «%s» de %s a %s (incluye 15 min de limpieza).',
                             $dt->format('H:i'),
                             $conflicto->pelicula->titulo,
                             $conflicto->fecha_hora->format('H:i'),
@@ -364,6 +393,7 @@ class Funciones extends Component
                         );
                         Flux::toast(variant: 'danger', text: $msg);
                         $this->addError('fecha_hora', $msg);
+
                         return;
                     }
                 }
@@ -687,6 +717,7 @@ class Funciones extends Component
         if ($duplicado) {
             $this->addError('sala_numero', "Ya existe otra sala con el nombre '{$this->sala_numero}' en la sede '{$this->sala_sede}'.");
             Flux::toast(variant: 'danger', text: "Ya existe una sala con este nombre en '{$this->sala_sede}'.");
+
             return;
         }
 
@@ -867,7 +898,7 @@ class Funciones extends Component
 
     public function render()
     {
-        $sedes = \App\Models\Sede::activas()->orderBy('nombre')->pluck('nombre');
+        $sedes = Sede::activas()->orderBy('nombre')->pluck('nombre');
 
         if ($sedes->isEmpty()) {
             $sedes = Sala::query()

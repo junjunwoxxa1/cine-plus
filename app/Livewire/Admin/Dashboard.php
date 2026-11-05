@@ -7,6 +7,7 @@ use App\Models\Funcion;
 use App\Models\Pelicula;
 use App\Models\Producto;
 use App\Models\Sala;
+use App\Models\Sede;
 use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -19,7 +20,7 @@ class Dashboard extends Component
     public function render()
     {
         return view('livewire.admin.dashboard', [
-            'totalSedes' => \App\Models\Sede::count(),
+            'totalSedes' => Sede::count(),
             'totalPeliculas' => Pelicula::count(),
             'totalFunciones' => Funcion::count(),
             'totalSalas' => Sala::count(),

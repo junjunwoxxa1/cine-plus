@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -30,11 +32,11 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        \Illuminate\Support\Facades\Gate::define('access-admin', function (\App\Models\User $user) {
+        Gate::define('access-admin', function (User $user) {
             return $user->isAdmin();
         });
 
-        \Illuminate\Support\Facades\Gate::define('access-pos', function (\App\Models\User $user) {
+        Gate::define('access-pos', function (User $user) {
             return $user->canAccessPos();
         });
     }

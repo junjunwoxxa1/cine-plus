@@ -141,13 +141,13 @@
                 @endif
             </flux:field>
 
-            <div class="p-3.5 bg-zinc-950 border rounded-xl text-xs space-y-2 {{ $this->totalButacas >= 20 && $this->totalButacas <= 300 ? 'border-zinc-800' : 'border-red-600/60 bg-red-950/20' }}">
+            <div class="p-3.5 bg-zinc-950 border rounded-xl text-xs space-y-2 {{ $this->totalButacas >= 30 && $this->totalButacas <= 300 ? 'border-zinc-800' : 'border-red-600/60 bg-red-950/20' }}">
                 <div class="flex items-center justify-between">
                     <span class="text-zinc-400 font-semibold flex items-center gap-1.5">
                         <span>🪑</span>
                         <span>Resolución y cálculo de butacas a crear:</span>
                     </span>
-                    <span class="text-sm font-black font-mono {{ $this->totalButacas >= 20 && $this->totalButacas <= 300 ? 'text-amber-400' : 'text-red-400' }}">
+                    <span class="text-sm font-black font-mono {{ $this->totalButacas >= 30 && $this->totalButacas <= 300 ? 'text-amber-400' : 'text-red-400' }}">
                         {{ $this->totalButacas }} butacas
                     </span>
                 </div>
@@ -157,15 +157,15 @@
                     <span class="font-mono text-zinc-500">(Fila A-1 a {{ range('A', 'Z')[max(0, min(25, (int) $filas - 1))] }}-{{ (int) $asientos_por_fila }})</span>
                 </div>
 
-                @if ($this->totalButacas >= 20 && $this->totalButacas <= 300)
+                @if ($this->totalButacas >= 30 && $this->totalButacas <= 300)
                     <div class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
                         <span>✅</span>
-                        <span>Capacidad válida: Cumple con el rango reglamentario (mínimo 20 y máximo 300 butacas).</span>
+                        <span>Capacidad válida: Cumple con el rango reglamentario (mínimo 30 y máximo 300 butacas).</span>
                     </div>
-                @elseif ($this->totalButacas < 20)
+                @elseif ($this->totalButacas < 30)
                     <div class="flex items-center gap-1.5 text-[11px] font-bold text-red-400 bg-red-950/60 border border-red-500/40 px-2.5 py-1 rounded-lg">
                         <span>⛔</span>
-                        <span>Capacidad insuficiente: Mínimo 20 butacas requeridas (faltan {{ 20 - $this->totalButacas }} butacas).</span>
+                        <span>Capacidad insuficiente: Mínimo 30 butacas requeridas (faltan {{ 30 - $this->totalButacas }} butacas).</span>
                     </div>
                 @else
                     <div class="flex items-center gap-1.5 text-[11px] font-bold text-red-400 bg-red-950/60 border border-red-500/40 px-2.5 py-1 rounded-lg">

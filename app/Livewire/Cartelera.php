@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Pelicula;
 use App\Models\Sala;
+use App\Models\Sede;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -42,7 +43,7 @@ class Cartelera extends Component
     public function render()
     {
         // 1. Sedes disponibles registradas
-        $sedes = \App\Models\Sede::activas()->orderBy('nombre')->pluck('nombre');
+        $sedes = Sede::activas()->orderBy('nombre')->pluck('nombre');
 
         if ($sedes->isEmpty()) {
             $sedes = Sala::query()
@@ -157,4 +158,3 @@ class Cartelera extends Component
         return view('livewire.cartelera', compact('peliculas', 'sedes', 'diasDisponibles', 'generos', 'sugerencias'));
     }
 }
-

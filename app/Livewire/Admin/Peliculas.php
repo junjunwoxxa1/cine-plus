@@ -17,19 +17,31 @@ class Peliculas extends Component
     use WithPagination;
 
     public string $busqueda = '';
+
     public bool $modalAbierto = false;
 
     public ?int $peliculaId = null;
+
     public string $titulo = '';
+
     public string $imagen = '';
+
     public string $descripcion = '';
+
     public string $director = '';
+
     public string $genero = '';
+
     public string $fecha_estreno = '';
+
     public int $duracion = 120;
+
     public string $clasificacion = 'PG-13';
+
     public string $idioma = 'Español Latino';
+
     public bool $en_banner = false;
+
     public int $orden_banner = 0;
 
     protected function rules(): array
@@ -61,6 +73,7 @@ class Peliculas extends Component
                     variant: 'danger',
                     text: 'Operación no permitida: Debe quedar al menos una película seleccionada para el carrusel de la portada.'
                 );
+
                 return;
             }
         }
@@ -117,6 +130,7 @@ class Peliculas extends Component
                 if ($otrosEnBanner < 1) {
                     $this->addError('en_banner', 'Debe quedar al menos una película seleccionada para el carrusel de la portada.');
                     Flux::toast(variant: 'danger', text: 'Debe quedar al menos una película seleccionada para el carrusel de la portada.');
+
                     return;
                 }
             }
@@ -137,6 +151,7 @@ class Peliculas extends Component
         $p = Pelicula::withCount('funciones')->findOrFail($id);
         if ($p->funciones_count > 0) {
             Flux::toast(variant: 'danger', text: "No se puede eliminar porque tiene {$p->funciones_count} funciones asignadas.");
+
             return;
         }
 
@@ -144,6 +159,7 @@ class Peliculas extends Component
             $otrosEnBanner = Pelicula::where('en_banner', true)->where('id', '!=', $p->id)->count();
             if ($otrosEnBanner < 1) {
                 Flux::toast(variant: 'danger', text: 'No se puede eliminar: Esta película es la única seleccionada en el carrusel de la portada.');
+
                 return;
             }
         }

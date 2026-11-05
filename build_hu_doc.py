@@ -148,7 +148,7 @@ HUs = [
     ("HU-64", "Módulo de compras y pagos", "Usuario", "Como Usuario, quiero que la pasarela valide estrictamente que no existan montos o pagos negativos y permita simular tarjetas de prueba de débito sin fondos para verificar el rechazo por saldo insuficiente, garantizando la transparencia y solidez del proceso de cobro.", "RN10, RN66"),
     ("HU-65", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero que el sistema me impida desactivar o eliminar el último medio de pago activo, garantizando que siempre exista al menos una vía de cobro habilitada para los clientes en taquilla y web.", "RN10, RN46, RN67"),
     ("HU-66", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero que el carrusel principal de la portada conserve siempre al menos una película seleccionada, evitando que la portada quede vacía o cargue películas no autorizadas por defecto.", "RN01, RN48, RN68"),
-    ("HU-67", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero configurar salas respetando un rango reglamentario estricto de mínimo 20 y máximo 300 butacas totales y visualizar en vivo el cálculo matemático de asientos a crear según las filas y columnas indicadas, para evitar salas desproporcionadas o fuera de normativa.", "RN23, RN28, RN69"),
+    ("HU-67", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero configurar salas respetando un rango reglamentario estricto de mínimo 30 y máximo 300 butacas totales y visualizar en vivo el cálculo matemático de asientos a crear según las filas y columnas indicadas, para evitar salas desproporcionadas o fuera de normativa.", "RN23, RN28, RN69"),
     ("HU-68", "Módulo de gestión del cine", "Gerente / Administrador", "Como Gerente, quiero que el programador de funciones valide la duración exacta de la película más un receso obligatorio de 15 minutos para limpieza de sala, impidiendo solapamientos en la misma sala y ofreciendo recomendaciones automáticas de horarios libres para optimizar la cartelera diaria.", "RN23, RN51, RN62, RN70")
 ]
 
@@ -222,7 +222,7 @@ RNs = [
     ("RN66", "El sistema rechaza cualquier transacción con importes, subtotales o cálculos negativos. En el entorno de pruebas, la tarjeta con terminación '0002' simula saldo insuficiente y genera rechazo bancario explícito."),
     ("RN67", "El panel administrativo de medios de pago exige como regla de integridad que al menos un método de pago permanezca activo en todo momento, bloqueando la desactivación o eliminación del último método activo."),
     ("RN68", "La portada requiere al menos una película marcada activamente para el carrusel de novedades (en_banner = true), impidiendo retirar la última película para mantener la identidad visual del portal."),
-    ("RN69", "La capacidad de las salas de cine está restringida a un rango de entre 20 y 300 butacas totales (filas × columnas), calculándose y validándose de forma reactiva en el formulario de creación."),
+    ("RN69", "La capacidad de las salas de cine está restringida a un rango de entre 30 y 300 butacas totales (filas × columnas), calculándose y validándose de forma reactiva en el formulario de creación."),
     ("RN70", "Cada función bloquea la sala durante el tiempo de duración de la película más un margen de 15 minutos de limpieza. El sistema prohíbe funciones simultáneas o solapadas en la misma sala y sugiere franjas horarias libres garantizadas.")
 ]
 

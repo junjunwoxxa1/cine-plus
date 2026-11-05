@@ -35,6 +35,7 @@ class CineDataSeeder extends Seeder
 
             if ($salaExistente) {
                 $salasCreadas[] = $salaExistente->id;
+
                 continue;
             }
 

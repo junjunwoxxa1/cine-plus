@@ -13,7 +13,7 @@ class PdfService
      */
     public function generarComprobantePdf(Comprobante $comprobante): string
     {
-        $options = new Options();
+        $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
 

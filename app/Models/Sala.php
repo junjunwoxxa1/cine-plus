@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sala extends Model
@@ -195,7 +196,7 @@ class Sala extends Model
     /**
      * Sede o complejo a la que pertenece la sala.
      */
-    public function sedeRelacion(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function sedeRelacion(): BelongsTo
     {
         return $this->belongsTo(Sede::class, 'sede', 'nombre');
     }

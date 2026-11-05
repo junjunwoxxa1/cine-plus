@@ -57,4 +57,3 @@ class CatalogoDulceriaSeeder extends Seeder
         }
     }
 }
-

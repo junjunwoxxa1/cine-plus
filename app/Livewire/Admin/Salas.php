@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\Butaca;
 use App\Models\Sala;
+use App\Models\Sede;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -15,15 +16,23 @@ use Livewire\Component;
 class Salas extends Component
 {
     public $salas;
+
     public string $filtroSede = '';
+
     public bool $modalAbierto = false;
 
     public ?int $salaId = null;
+
     public string $numero_sala = '';
+
     public string $sede = 'Cine+ Alcázar (Miraflores)';
+
     public int $filas = 5;
+
     public int $asientos_por_fila = 10;
+
     public string $plantilla = 'clasica';
+
     public bool $guardando = false;
 
     protected function rules(): array
@@ -98,17 +107,19 @@ class Salas extends Component
         try {
             $validated = $this->validate();
 
-            // Validación estricta del límite de butacas totales (Mínimo: 20, Máximo: 300)
+            // Validación estricta del límite de butacas totales (Mínimo: 30, Máximo: 300)
             $totalButacas = (int) $validated['filas'] * (int) $validated['asientos_por_fila'];
-            if ($totalButacas < 20) {
-                $this->addError('filas', "La sala debe tener un mínimo de 20 butacas totales. Actualmente tiene {$totalButacas} butacas ({$validated['filas']} filas × {$validated['asientos_por_fila']} columnas).");
-                Flux::toast(variant: 'danger', text: "Límite insuficiente: Se requieren mínimo 20 butacas (actual: {$totalButacas}).");
+            if ($totalButacas < 30) {
+                $this->addError('filas', "La sala debe tener un mínimo de 30 butacas totales. Actualmente tiene {$totalButacas} butacas ({$validated['filas']} filas × {$validated['asientos_por_fila']} columnas).");
+                Flux::toast(variant: 'danger', text: "Límite insuficiente: Se requieren mínimo 30 butacas (actual: {$totalButacas}).");
+
                 return;
             }
 
             if ($totalButacas > 300) {
                 $this->addError('filas', "La sala no puede exceder el límite máximo de 300 butacas totales. Actualmente tiene {$totalButacas} butacas ({$validated['filas']} filas × {$validated['asientos_por_fila']} columnas).");
                 Flux::toast(variant: 'danger', text: "Límite excedido: La sala no puede superar las 300 butacas (actual: {$totalButacas}).");
+
                 return;
             }
 
@@ -123,6 +134,7 @@ class Salas extends Component
             if ($duplicadoQuery->exists()) {
                 $this->addError('numero_sala', 'Ya existe una sala con este nombre en la sede seleccionada.');
                 Flux::toast(variant: 'danger', text: "Ya existe una sala llamada '{$validated['numero_sala']}' en '{$validated['sede']}'.");
+
                 return;
             }
 
@@ -282,7 +294,7 @@ class Salas extends Component
 
     public function render()
     {
-        $sedes = \App\Models\Sede::activas()->orderBy('nombre')->pluck('nombre');
+        $sedes = Sede::activas()->orderBy('nombre')->pluck('nombre');
 
         if ($sedes->isEmpty()) {
             $sedes = Sala::query()

@@ -109,30 +109,6 @@
 
                     {{-- Formulario para Tarjeta --}}
                     <div x-show="requiereTarjeta" class="space-y-4 pt-2" x-transition>
-                        {{-- Tarjetas de Prueba (Sandbox / Calidad) --}}
-                        <div class="p-3 bg-zinc-950/90 border border-zinc-800 rounded-xl space-y-2 text-xs">
-                            <div class="flex items-center justify-between text-[11px] font-bold text-zinc-400">
-                                <span>💳 Tarjetas de Prueba Disponibles (Haz clic para autocompletar):</span>
-                                <span class="text-zinc-500 font-mono text-[10px]">Ambiente de Calidad</span>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <button type="button"
-                                    onclick="document.querySelector('input[name=numero_tarjeta]').value='4000 1234 5678 9010'; document.querySelector('input[name=vencimiento]').value='12/28'; document.querySelector('input[name=cvc]').value='123';"
-                                    class="text-left p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-emerald-900/40 hover:border-emerald-500/50 transition-all cursor-pointer group shadow-sm">
-                                    <span class="text-[11px] font-bold text-emerald-400 block group-hover:text-emerald-300">✅ Débito con Saldo (Aprobada)</span>
-                                    <span class="font-mono text-zinc-200 text-xs">4000 1234 5678 9010</span>
-                                    <span class="text-[10px] text-zinc-500 block mt-0.5">Exp: 12/28 • CVC: 123</span>
-                                </button>
-                                <button type="button"
-                                    onclick="document.querySelector('input[name=numero_tarjeta]').value='4000 0000 0000 0002'; document.querySelector('input[name=vencimiento]').value='12/28'; document.querySelector('input[name=cvc]').value='789';"
-                                    class="text-left p-2.5 rounded-lg bg-zinc-900 hover:bg-red-950/40 border border-red-900/50 hover:border-red-500/60 transition-all cursor-pointer group shadow-sm">
-                                    <span class="text-[11px] font-bold text-red-400 block group-hover:text-red-300">❌ Débito Sin Fondos (Rechazo)</span>
-                                    <span class="font-mono text-zinc-200 text-xs">4000 0000 0000 0002</span>
-                                    <span class="text-[10px] text-red-400/80 block mt-0.5">Simula Saldo Insuficiente</span>
-                                </button>
-                            </div>
-                        </div>
-
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Número de Tarjeta</label>
                             <input type="text" name="numero_tarjeta" placeholder="0000 0000 0000 0000"

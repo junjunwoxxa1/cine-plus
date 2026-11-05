@@ -16,6 +16,7 @@ use Livewire\Component;
 class DulceriaPos extends Component
 {
     public string $busqueda = '';
+
     public string $categoriaSeleccionada = 'todos';
 
     // Carrito de ventas POS
@@ -24,13 +25,18 @@ class DulceriaPos extends Component
 
     // Datos del cobro
     public string $clienteNombre = 'Cliente Mostrador';
+
     public string $clienteEmail = '';
+
     public string $metodoPago = 'efectivo';
+
     public float $montoRecibido = 0.0;
 
     // Venta completada para el modal/ticket
     public ?int $ventaExitosaId = null;
+
     public ?array $ticketVenta = null;
+
     public bool $modalTicketAbierto = false;
 
     public function agregarAlCarrito(int $productoId): void
@@ -111,6 +117,7 @@ class DulceriaPos extends Component
     {
         if (empty($this->carrito)) {
             $this->addError('carrito', 'El carrito de venta está vacío.');
+
             return;
         }
 
@@ -118,16 +125,19 @@ class DulceriaPos extends Component
 
         if ($totalFinal <= 0) {
             $this->addError('carrito', 'Error: El total de la venta debe ser mayor a S/ 0.00 y no puede ser negativo.');
+
             return;
         }
 
         if ($this->montoRecibido < 0) {
             $this->addError('montoRecibido', 'El monto recibido no puede ser un valor negativo.');
+
             return;
         }
 
         if ($this->metodoPago === 'efectivo' && $this->montoRecibido < $totalFinal) {
             $this->addError('montoRecibido', sprintf('Monto insuficiente: El efectivo recibido (S/ %.2f) es menor que el total de la venta (S/ %.2f).', $this->montoRecibido, $totalFinal));
+
             return;
         }
 
@@ -135,7 +145,8 @@ class DulceriaPos extends Component
         foreach ($this->carrito as $item) {
             $prod = Producto::find($item['id']);
             if (! $prod || $prod->stock < $item['cantidad']) {
-                $this->addError('carrito', 'Stock insuficiente para ' . ($prod->nombre ?? 'el producto'));
+                $this->addError('carrito', 'Stock insuficiente para '.($prod->nombre ?? 'el producto'));
+
                 return;
             }
         }
@@ -152,7 +163,7 @@ class DulceriaPos extends Component
         $comprobante = DB::transaction(function () use ($totalFinal, $itemsSnapshot, $metodoSeleccionado) {
             $correlativo = (int) (Comprobante::max('id') ?? 0) + 1;
             $numeroTicket = str_pad((string) $correlativo, 7, '0', STR_PAD_LEFT);
-            $codigoReserva = 'CP-POS-' . strtoupper(Str::random(4));
+            $codigoReserva = 'CP-POS-'.strtoupper(Str::random(4));
 
             $nuevoComprobante = Comprobante::create([
                 'codigo_reserva' => $codigoReserva,
@@ -247,7 +258,7 @@ class DulceriaPos extends Component
         }
 
         if ($this->busqueda !== '') {
-            $t = '%' . $this->busqueda . '%';
+            $t = '%'.$this->busqueda.'%';
             $productosQuery->where(function ($q) use ($t) {
                 $q->where('nombre', 'like', $t)
                     ->orWhere('descripcion', 'like', $t);
@@ -259,4 +270,3 @@ class DulceriaPos extends Component
         return view('livewire.pos.dulceria-pos', compact('categorias', 'productos'));
     }
 }
-

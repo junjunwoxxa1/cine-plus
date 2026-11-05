@@ -14,15 +14,22 @@ use Livewire\Component;
 class Inventario extends Component
 {
     public string $busqueda = '';
+
     public string $filtroCategoria = 'todas';
+
     public string $filtroEstado = 'todos'; // todos, saludable, bajo, agotado
 
     // Modal para Ajuste o Reabastecimiento de Stock
     public bool $modalStockAbierto = false;
+
     public ?int $productoSeleccionadoId = null;
+
     public string $productoSeleccionadoNombre = '';
+
     public int $stockActual = 0;
+
     public int $cantidadAjuste = 10;
+
     public string $tipoAjuste = 'sumar'; // 'sumar' o 'fijar'
 
     public function abrirAjuste(int $id): void
@@ -53,7 +60,7 @@ class Inventario extends Component
         $prod->update(['stock' => $nuevoStock]);
 
         $this->modalStockAbierto = false;
-        Flux::toast('Stock actualizado correctamente para ' . $prod->nombre, variant: 'success');
+        Flux::toast('Stock actualizado correctamente para '.$prod->nombre, variant: 'success');
     }
 
     public function sumarRapido(int $id, int $cantidad): void
@@ -76,7 +83,7 @@ class Inventario extends Component
         }
 
         if ($this->busqueda !== '') {
-            $t = '%' . $this->busqueda . '%';
+            $t = '%'.$this->busqueda.'%';
             $query->where(function ($q) use ($t) {
                 $q->where('nombre', 'like', $t)
                     ->orWhere('descripcion', 'like', $t);
@@ -112,4 +119,3 @@ class Inventario extends Component
         ));
     }
 }
-

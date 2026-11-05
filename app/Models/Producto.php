@@ -67,6 +67,6 @@ class Producto extends Model
             return asset($img);
         }
 
-        return asset('storage/' . $img);
+        return asset('storage/'.$img);
     }
 }

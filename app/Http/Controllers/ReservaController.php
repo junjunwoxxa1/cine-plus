@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Butaca;
+use App\Models\CategoriaProducto;
 use App\Models\Funcion;
 use App\Models\Producto;
 use Illuminate\Http\Request;
@@ -106,7 +107,8 @@ class ReservaController extends Controller
             // Formatear códigos de asientos de la vista ("A1") al formato almacenado en BD ("A-1")
             $numerosButacas = array_map(function ($codigo) {
                 preg_match('/([A-Za-z]+)(\d+)/', $codigo, $matches);
-                return isset($matches[1], $matches[2]) ? $matches[1] . '-' . $matches[2] : $codigo;
+
+                return isset($matches[1], $matches[2]) ? $matches[1].'-'.$matches[2] : $codigo;
             }, $validated['butacas']);
 
             // Obtener los IDs de las butacas pertenecientes a la sala
@@ -116,6 +118,7 @@ class ReservaController extends Controller
 
             if ($butacas->count() !== count($numerosButacas)) {
                 DB::rollBack();
+
                 return back()->withErrors(['butacas' => 'Una o más butacas seleccionadas no son válidas.']);
             }
 
@@ -123,6 +126,7 @@ class ReservaController extends Controller
             foreach ($butacas as $butaca) {
                 if (in_array($butaca->numero_butaca, $celdasEscalera, true)) {
                     DB::rollBack();
+
                     return back()->withErrors(['butacas' => "La posición {$butaca->numero_butaca} corresponde a una escalera de acceso."]);
                 }
 
@@ -131,8 +135,9 @@ class ReservaController extends Controller
                     ->wherePivot('disponible', true)
                     ->exists();
 
-                if (!$disponible) {
+                if (! $disponible) {
                     DB::rollBack();
+
                     return back()->withErrors(['butacas' => "La butaca {$butaca->numero_butaca} ya no está disponible."]);
                 }
             }
@@ -166,6 +171,7 @@ class ReservaController extends Controller
             return redirect()->route('reservas.dulceria');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->withErrors(['error' => 'Ocurrió un error al procesar la reserva. Inténtalo de nuevo.']);
         }
     }
@@ -177,14 +183,14 @@ class ReservaController extends Controller
     {
         $reserva = session('reserva_temp');
 
-        if (!$reserva) {
+        if (! $reserva) {
             return redirect()->route('home')->withErrors(['error' => 'No hay una reserva activa.']);
         }
 
         $funcion = Funcion::with(['pelicula', 'sala'])->findOrFail($reserva['funcion_id']);
 
         // Categorías activas con todos sus productos (para mostrar disponibles, desactivados y agotados en gris)
-        $categorias = \App\Models\CategoriaProducto::activas()
+        $categorias = CategoriaProducto::activas()
             ->with(['productos' => fn ($q) => $q->orderBy('nombre')])
             ->get();
 
@@ -210,7 +216,7 @@ class ReservaController extends Controller
 
         $reserva = session('reserva_temp');
 
-        if (!$reserva) {
+        if (! $reserva) {
             return redirect()->route('home')->withErrors(['error' => 'La sesión ha expirado.']);
         }
 
@@ -218,7 +224,7 @@ class ReservaController extends Controller
         $productosSeleccionados = [];
         $montoDulceria = 0;
 
-        if (!empty($validated['productos'])) {
+        if (! empty($validated['productos'])) {
             $productosIds = array_keys(array_filter($validated['productos'], fn ($qty) => $qty > 0));
             $productos = Producto::whereIn('id', $productosIds)->get()->keyBy('id');
 

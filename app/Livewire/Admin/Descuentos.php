@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Enums\TipoDescuento;
+use App\Models\Configuracion;
 use App\Models\Descuento;
 use Flux\Flux;
 use Livewire\Attributes\Layout;
@@ -14,16 +15,25 @@ use Livewire\Component;
 class Descuentos extends Component
 {
     public $descuentos;
+
     public bool $modalAbierto = false;
 
     public ?int $descuentoId = null;
+
     public string $nombre = '';
+
     public string $descripcion = '';
+
     public string $codigo = '';
+
     public string $tipo = 'monto_por_entrada';
+
     public $valor = 4.00;
+
     public string $fecha_inicio = '';
+
     public string $fecha_fin = '';
+
     public bool $activo = true;
 
     protected function rules(): array
@@ -77,7 +87,7 @@ class Descuentos extends Component
     public function toggleActivo(int $id): void
     {
         $d = Descuento::findOrFail($id);
-        $d->activo = !$d->activo;
+        $d->activo = ! $d->activo;
         $d->save();
         $this->cargarDescuentos();
         Flux::toast(variant: 'success', text: $d->activo ? 'Promoción activada' : 'Promoción desactivada');
@@ -86,9 +96,9 @@ class Descuentos extends Component
     public function guardar(): void
     {
         $validated = $this->validate();
-        $validated['codigo'] = !empty($this->codigo) ? strtoupper(trim($this->codigo)) : null;
-        $validated['fecha_inicio'] = !empty($this->fecha_inicio) ? $this->fecha_inicio : null;
-        $validated['fecha_fin'] = !empty($this->fecha_fin) ? $this->fecha_fin : null;
+        $validated['codigo'] = ! empty($this->codigo) ? strtoupper(trim($this->codigo)) : null;
+        $validated['fecha_inicio'] = ! empty($this->fecha_inicio) ? $this->fecha_inicio : null;
+        $validated['fecha_fin'] = ! empty($this->fecha_fin) ? $this->fecha_fin : null;
 
         if ($this->descuentoId) {
             $d = Descuento::findOrFail($this->descuentoId);
@@ -105,7 +115,7 @@ class Descuentos extends Component
 
     public function togglePuntosSeparados(): void
     {
-        $nuevoEstado = \App\Models\Configuracion::togglePuntosSeparados();
+        $nuevoEstado = Configuracion::togglePuntosSeparados();
         if ($nuevoEstado) {
             Flux::toast(variant: 'success', text: 'Modalidad de Puntos Separados (Cine vs. Dulcería) ACTIVADA a nivel general.');
         } else {
@@ -125,7 +135,7 @@ class Descuentos extends Component
     {
         return view('livewire.admin.descuentos', [
             'tipos' => TipoDescuento::cases(),
-            'puntosSeparadosActivo' => \App\Models\Configuracion::puntosSeparadosActivo(),
+            'puntosSeparadosActivo' => Configuracion::puntosSeparadosActivo(),
         ]);
     }
 }

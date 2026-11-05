@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,25 @@ class Funcion extends Model
     }
 
     /**
+     * Convierte minutos enteros a formato 'H:MM hrs' (ej. 99 min => '1:39 hrs').
+     */
+    public static function minutosAHorasFormato(int $minutos): string
+    {
+        $horas = intdiv(max(0, $minutos), 60);
+        $resto = max(0, $minutos) % 60;
+
+        return sprintf('%d:%02d hrs', $horas, $resto);
+    }
+
+    /**
+     * Duración formateada de la película en horas (ej. 99 min => '1:39 hrs').
+     */
+    public function getDuracionFormateadaAttribute(): string
+    {
+        return $this->pelicula ? $this->pelicula->duracion_formateada : self::minutosAHorasFormato($this->duracion_minutos);
+    }
+
+    /**
      * Tiempo reglamentario de receso y limpieza de sala entre funciones (15 minutos).
      */
     public static function recesoLimpiezaMinutos(): int
@@ -57,9 +77,17 @@ class Funcion extends Model
     }
 
     /**
+     * Duración total formateada en horas (película + 15 min limpieza).
+     */
+    public function getDuracionTotalFormateadaAttribute(): string
+    {
+        return self::minutosAHorasFormato($this->duracion_total_minutos);
+    }
+
+    /**
      * Fecha y hora en que culmina la proyección de la película.
      */
-    public function getFechaFinPeliculaAttribute(): ?\Carbon\Carbon
+    public function getFechaFinPeliculaAttribute(): ?Carbon
     {
         return $this->fecha_hora ? $this->fecha_hora->copy()->addMinutes($this->duracion_minutos) : null;
     }
@@ -67,7 +95,7 @@ class Funcion extends Model
     /**
      * Fecha y hora en que culmina el receso de limpieza y la sala queda libre para la siguiente función.
      */
-    public function getFechaFinLimpiezaAttribute(): ?\Carbon\Carbon
+    public function getFechaFinLimpiezaAttribute(): ?Carbon
     {
         return $this->fecha_hora ? $this->fecha_hora->copy()->addMinutes($this->duracion_total_minutos) : null;
     }
@@ -75,7 +103,7 @@ class Funcion extends Model
     /**
      * Determina si un horario propuesto se solapa con esta función (incluyendo sus 15 min de limpieza).
      */
-    public function colisionaCon(\Carbon\Carbon $inicioPropuesto, int $duracionPropuestaMinutos): bool
+    public function colisionaCon(Carbon $inicioPropuesto, int $duracionPropuestaMinutos): bool
     {
         if (! $this->fecha_hora) {
             return false;

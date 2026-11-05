@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Mail\ComprobanteCompraMail;
 use App\Models\CategoriaProducto;
 use App\Models\Comprobante;
+use App\Models\Configuracion;
 use App\Models\Descuento;
 use App\Models\MetodoPago;
 use App\Models\Producto;
 use App\Models\Sala;
+use App\Models\Sede;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +30,7 @@ class DulceriaOnlineController extends Controller
 
         $productos = $categorias->flatMap->productos;
 
-        $sedes = \App\Models\Sede::activas()->orderBy('nombre')->pluck('nombre');
+        $sedes = Sede::activas()->orderBy('nombre')->pluck('nombre');
 
         if ($sedes->isEmpty()) {
             $sedes = Sala::query()
@@ -279,7 +281,7 @@ class DulceriaOnlineController extends Controller
 
             // Sumar puntos al usuario si está autenticado
             if ($user && $totalFinal > 0) {
-                if (\App\Models\Configuracion::puntosSeparadosActivo()) {
+                if (Configuracion::puntosSeparadosActivo()) {
                     $user->sumarPuntosDulceria(5);
                 } else {
                     $user->increment('saldo_puntos', 5);

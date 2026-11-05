@@ -312,7 +312,7 @@
                                             <span class="px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-[10px] font-black text-red-400 uppercase">
                                                 {{ $peliculaItem->genero }}
                                             </span>
-                                            <span class="text-xs text-zinc-400">⏱️ {{ $peliculaItem->duracion }} min</span>
+                                            <span class="text-xs text-zinc-400">⏱️ {{ $peliculaItem->duracion_formateada }}</span>
                                             <span class="text-xs text-zinc-400">• 🎟️ {{ $peliculaItem->clasificacion }}</span>
                                         </div>
                                         <h2 class="text-lg sm:text-xl font-black text-white mt-1">{{ $peliculaItem->titulo }}</h2>
@@ -756,7 +756,7 @@
                 <select wire:model="pelicula_id" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-sm text-zinc-200" required>
                     <option value="">Selecciona película</option>
                     @foreach ($peliculas as $p)
-                        <option value="{{ $p->id }}">{{ $p->titulo }} ({{ $p->duracion }} min)</option>
+                        <option value="{{ $p->id }}">{{ $p->titulo }} ({{ $p->duracion_formateada }})</option>
                     @endforeach
                 </select>
                 <flux:error name="pelicula_id" />
@@ -765,6 +765,8 @@
             @php
                 $peliculaSeleccionada = $peliculas->firstWhere('id', (int) $pelicula_id);
                 $duracionActual = (int) ($peliculaSeleccionada?->duracion ?: 120);
+                $duracionPeliculaFormato = \App\Models\Funcion::minutosAHorasFormato($duracionActual);
+                $duracionTotalConLimpieza = \App\Models\Funcion::minutosAHorasFormato($duracionActual + 15);
             @endphp
             @if ($peliculaSeleccionada)
                 <div class="p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -772,11 +774,11 @@
                         🎬 <strong>{{ $peliculaSeleccionada->titulo }}</strong>
                     </span>
                     <div class="flex items-center gap-2">
-                        <span class="text-amber-400 font-mono font-bold">⏱️ {{ $duracionActual }} min de película</span>
+                        <span class="text-amber-400 font-mono font-bold">⏱️ {{ $duracionPeliculaFormato }} de película</span>
                         <span class="text-zinc-600">•</span>
-                        <span class="text-indigo-400 font-mono font-bold">🧹 +15 min receso de limpieza</span>
+                        <span class="text-indigo-400 font-mono font-bold">🧹 +0:15 hrs receso de limpieza</span>
                         <span class="text-zinc-600">=</span>
-                        <span class="text-emerald-400 font-mono font-bold">{{ $duracionActual + 15 }} min totales de sala</span>
+                        <span class="text-emerald-400 font-mono font-bold">{{ $duracionTotalConLimpieza }} totales de sala</span>
                     </div>
                 </div>
             @endif
@@ -883,7 +885,7 @@
                         @foreach ($horariosOcupadosModal as $fOcupada)
                             <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-900/80 border border-red-500 text-xs font-mono font-bold text-white shadow-md">
                                 <span>🕒 {{ $fOcupada->fecha_hora->format('H:i') }} - {{ $fOcupada->fecha_fin_limpieza->format('H:i') }} hrs</span>
-                                <span class="text-[11px] font-sans font-normal text-red-200">({{ $fOcupada->pelicula->titulo }} • {{ $fOcupada->duracion_minutos }}m + 15m aseo)</span>
+                                <span class="text-[11px] font-sans font-normal text-red-200">({{ $fOcupada->pelicula->titulo }} • {{ $fOcupada->duracion_formateada }} + 0:15 hrs aseo)</span>
                                 <span class="bg-red-950 text-red-300 text-[10px] px-1.5 py-0.5 rounded border border-red-700 font-sans font-bold uppercase">Ocupado</span>
                             </div>
                         @endforeach

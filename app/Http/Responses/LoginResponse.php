@@ -63,5 +63,3 @@ class LoginResponse implements LoginResponseContract, RegisterResponseContract, 
         return redirect()->intended($destinoPorDefecto);
     }
 }
-
-

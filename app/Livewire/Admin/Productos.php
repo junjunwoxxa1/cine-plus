@@ -17,17 +17,27 @@ class Productos extends Component
     use WithPagination;
 
     public string $busqueda = '';
+
     public string $filtroCategoria = '';
+
     public bool $modalAbierto = false;
 
     public ?int $productoId = null;
+
     public ?int $categoria_producto_id = null;
+
     public string $nombre = '';
+
     public string $descripcion = '';
+
     public string $imagen = '';
+
     public $precio = 0.00;
+
     public int $precio_puntos = 0;
+
     public int $stock = 50;
+
     public bool $activo = true;
 
     protected function rules(): array
@@ -46,8 +56,8 @@ class Productos extends Component
 
     public function updatedPrecio($val): void
     {
-        if (is_numeric($val) && (int)$this->precio_puntos === 0) {
-            $this->precio_puntos = (int) round((float)$val * 10);
+        if (is_numeric($val) && (int) $this->precio_puntos === 0) {
+            $this->precio_puntos = (int) round((float) $val * 10);
         }
     }
 
@@ -102,7 +112,7 @@ class Productos extends Component
     public function toggleActivo(int $id): void
     {
         $prod = Producto::findOrFail($id);
-        $prod->activo = !$prod->activo;
+        $prod->activo = ! $prod->activo;
         $prod->save();
         Flux::toast(variant: 'success', text: $prod->activo ? 'Producto activado' : 'Producto desactivado');
     }

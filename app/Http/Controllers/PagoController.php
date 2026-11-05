@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ComprobanteCompraMail;
 use App\Models\Comprobante;
+use App\Models\Configuracion;
 use App\Models\Descuento;
 use App\Models\Funcion;
 use App\Models\MetodoPago;
+use App\Models\Producto;
+use App\Services\PdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class PagoController extends Controller
@@ -39,7 +45,7 @@ class PagoController extends Controller
         // Métodos de pago y promociones dinámicas desde la BD
         $metodosPago = MetodoPago::activos()->get();
         $descuentos = Descuento::vigentes()->get();
-        $puntosSeparadosActivo = \App\Models\Configuracion::puntosSeparadosActivo();
+        $puntosSeparadosActivo = Configuracion::puntosSeparadosActivo();
 
         return view('pago.index', compact(
             'reserva',
@@ -77,7 +83,7 @@ class PagoController extends Controller
         $puntosUtilizadosDulceria = 0;
 
         $user = auth()->user();
-        $puntosSeparadosActivo = \App\Models\Configuracion::puntosSeparadosActivo();
+        $puntosSeparadosActivo = Configuracion::puntosSeparadosActivo();
 
         if ($puntosSeparadosActivo) {
             // 1. Canje de Puntos de Cine para Entradas (50 pts = descuenta el valor de 1 entrada)
@@ -109,7 +115,7 @@ class PagoController extends Controller
                     $descDulceria = min($montoDulceria, 20.00);
                     $montoDescuento += $descDulceria;
                     $descuentoConcepto = $descuentoConcepto
-                        ? $descuentoConcepto . ' + Canje Dulcería (50 Puntos Dulcería)'
+                        ? $descuentoConcepto.' + Canje Dulcería (50 Puntos Dulcería)'
                         : 'Canje de Snacks (50 Puntos Dulcería)';
                     $esCanjeDulceria = true;
                     $puntosUtilizadosDulceria = 50;
@@ -146,7 +152,7 @@ class PagoController extends Controller
                     ? 'Cupón '.$descuento->codigo.' ('.$descuento->nombre.')'
                     : $descuento->nombre;
             }
-        // 4. Código promocional / Cupón tipeado
+            // 4. Código promocional / Cupón tipeado
         } elseif (! $esCanjeCine && $request->filled('codigo_promo')) {
             $codigoLimpio = strtoupper(trim((string) $request->codigo_promo));
             $descuento = Descuento::vigentes()->where('codigo', $codigoLimpio)->first();
@@ -298,7 +304,7 @@ class PagoController extends Controller
                 ]);
 
                 // Descontar inventario / stock sincronizado
-                if ($prod = \App\Models\Producto::find($productoId)) {
+                if ($prod = Producto::find($productoId)) {
                     $prod->decrement('stock', min($prod->stock, $cantidad));
                 }
             }
@@ -338,12 +344,12 @@ class PagoController extends Controller
         // Enviar comprobante con PDF adjunto al correo del cliente
         if (! empty($comprobante->cliente_email)) {
             try {
-                \Illuminate\Support\Facades\Mail::mailer('smtp')
+                Mail::mailer('smtp')
                     ->to($comprobante->cliente_email)
-                    ->send(new \App\Mail\ComprobanteCompraMail($comprobante));
-                \Illuminate\Support\Facades\Log::info('Comprobante PDF enviado exitosamente a: '.$comprobante->cliente_email);
+                    ->send(new ComprobanteCompraMail($comprobante));
+                Log::info('Comprobante PDF enviado exitosamente a: '.$comprobante->cliente_email);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Error enviando correo con comprobante PDF a '.$comprobante->cliente_email.': '.$e->getMessage().' en '.$e->getFile().':'.$e->getLine());
+                Log::error('Error enviando correo con comprobante PDF a '.$comprobante->cliente_email.': '.$e->getMessage().' en '.$e->getFile().':'.$e->getLine());
             }
         }
 
@@ -371,7 +377,7 @@ class PagoController extends Controller
     /**
      * Descarga directa del comprobante en formato PDF.
      */
-    public function descargarPdf(string $codigo, \App\Services\PdfService $pdfService)
+    public function descargarPdf(string $codigo, PdfService $pdfService)
     {
         $comprobante = Comprobante::with('detalles')
             ->where('codigo_reserva', $codigo)

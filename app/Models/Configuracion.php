@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -13,8 +14,8 @@ use Illuminate\Support\Facades\Cache;
  * @property string $clave
  * @property string|null $valor
  * @property string|null $descripcion
- * @property \Carbon\Carbon|null $created_at
- * @property \Carbon\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Configuracion extends Model
 {
@@ -89,4 +90,3 @@ class Configuracion extends Model
         return $nuevoEstado;
     }
 }
-

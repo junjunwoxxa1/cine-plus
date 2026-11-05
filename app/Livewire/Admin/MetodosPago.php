@@ -14,14 +14,21 @@ use Livewire\Component;
 class MetodosPago extends Component
 {
     public $metodos;
+
     public bool $modalAbierto = false;
 
     public ?int $metodoId = null;
+
     public string $nombre = '';
+
     public string $codigo = '';
+
     public string $instrucciones = '';
+
     public bool $requiere_tarjeta = false;
+
     public int $orden = 0;
+
     public bool $activo = true;
 
     protected function rules(): array
@@ -48,7 +55,7 @@ class MetodosPago extends Component
 
     public function updatedNombre($val): void
     {
-        if (!$this->metodoId && $this->codigo === '') {
+        if (! $this->metodoId && $this->codigo === '') {
             $this->codigo = Str::slug($val, '_');
         }
     }
@@ -83,11 +90,12 @@ class MetodosPago extends Component
             $activosCount = MetodoPago::where('activo', true)->count();
             if ($activosCount <= 1) {
                 Flux::toast(variant: 'danger', text: 'Operación no permitida: Debe quedar al menos un medio de pago activo en el sistema.');
+
                 return;
             }
         }
 
-        $m->activo = !$m->activo;
+        $m->activo = ! $m->activo;
         $m->save();
         $this->cargarMetodos();
         Flux::toast(variant: 'success', text: $m->activo ? 'Método activado.' : 'Método desactivado.');
@@ -106,6 +114,7 @@ class MetodosPago extends Component
                 if ($activosRestantes < 1) {
                     $this->addError('activo', 'Debe haber al menos un medio de pago activo en el sistema.');
                     Flux::toast(variant: 'danger', text: 'Operación no permitida: Debe quedar al menos un medio de pago activo en el sistema.');
+
                     return;
                 }
             }
@@ -130,6 +139,7 @@ class MetodosPago extends Component
             $activosRestantes = MetodoPago::where('activo', true)->where('id', '!=', $m->id)->count();
             if ($activosRestantes < 1) {
                 Flux::toast(variant: 'danger', text: 'No se puede eliminar: Debe quedar al menos un medio de pago activo en el sistema.');
+
                 return;
             }
         }
