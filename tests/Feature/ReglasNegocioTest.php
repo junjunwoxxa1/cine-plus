@@ -200,13 +200,18 @@ test('flujo de compra de entradas recuerda los productos de dulceria al retroced
     expect($reserva['productos'])->toHaveKey($producto->id);
     expect($reserva['productos'][$producto->id]['cantidad'])->toBe(2);
 
-    // 3. Volver a la pantalla de selección de butacas
+    // 3. Volver a la pantalla de selección de butacas: NO debe mostrar el bloque de dulcería guardada
     $responseButacas = $this->get(route('reservas.butacas', $funcion));
     $responseButacas->assertOk();
-    $responseButacas->assertSee('DULCERÍA GUARDADA');
-    $responseButacas->assertSee($producto->nombre);
+    $responseButacas->assertDontSee('DULCERÍA GUARDADA');
+    $responseButacas->assertDontSee('Tus snacks se mantendrán listos al continuar');
 
-    // La sesión debe seguir conservando los productos de dulcería
+    // La sesión debe seguir conservando los productos de dulcería internamente
     $reservaPersistida = session('reserva_temp');
     expect($reservaPersistida['productos'])->toHaveKey($producto->id);
+
+    // 4. Al continuar al paso de dulcería, los productos seleccionados sí deben estar presentes
+    $responseDulceria = $this->get(route('reservas.dulceria'));
+    $responseDulceria->assertOk();
+    $responseDulceria->assertSee($producto->nombre);
 });

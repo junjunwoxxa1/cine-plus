@@ -1,5 +1,22 @@
 <x-layouts::auth.clear :title="'Seleccionar Butacas - ' . $funcion->pelicula->titulo">
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6" x-data="reservaButacas({
+    <style>
+        .seat-map-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        .seat-map-scroll::-webkit-scrollbar-track {
+            background: rgba(17, 24, 39, 0.7);
+            border-radius: 9999px;
+        }
+        .seat-map-scroll::-webkit-scrollbar-thumb {
+            background: rgba(239, 68, 68, 0.45);
+            border-radius: 9999px;
+        }
+        .seat-map-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(239, 68, 68, 0.75);
+        }
+    </style>
+
+    <main class="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5" x-data="reservaButacas({
         cantidadPermitida: {{ (int) ($cantidadSeleccionada ?? 2) }},
         butacasIniciales: {{ json_encode($butacasSeleccionadas ?? []) }}
     })">
@@ -27,38 +44,83 @@
             </div>
         </div>
 
+        @php
+            $escalerasCol = $mapaConfig['escaleras_despues_columna'] ?? [];
+            $pasillosFila = $mapaConfig['pasillos_despues_fila'] ?? [];
+            $celdasEscalera = $mapaConfig['celdas_escalera'] ?? [];
+
+            $maxCols = $butacasPorFila->map(fn($fila) => $fila->count())->max() ?: 10;
+            $totalFilas = $butacasPorFila->count() ?: 5;
+            $totalButacas = $funcion->butacas->count();
+
+            // Calibración adaptativa según capacidad y dimensiones de la sala (ej. 30 a 300 butacas)
+            if ($maxCols >= 19 || $totalButacas >= 180 || $totalFilas >= 13) {
+                // Sala grande / masiva (hasta 300 asientos, ej: 12x25 o 15x20)
+                $tamanoButaca = 'w-[22px] h-[22px] sm:w-[25px] sm:h-[25px] lg:w-[26px] lg:h-[26px] xl:w-[28px] xl:h-[28px]';
+                $textoButaca = 'text-[7px] sm:text-[8px] lg:text-[8px] xl:text-[8.5px] font-extrabold tracking-tighter';
+                $tamanoEscalera = 'w-[14px] sm:w-[18px] lg:w-[18px] xl:w-[20px] h-[22px] sm:h-[25px] lg:h-[26px] xl:h-[28px]';
+                $gapColumnas = 'gap-1 sm:gap-1.5';
+                $gapFilas = 'space-y-1.5 sm:space-y-2';
+                $paddingCard = 'p-3 sm:p-5 lg:p-6';
+                $tamanoLetraFila = 'w-3.5 sm:w-4 text-[9px] sm:text-[10px] md:text-xs';
+                $tamanoPantalla = 'max-w-xl sm:max-w-2xl';
+                $esSalaGrande = true;
+            } elseif ($maxCols >= 12 || $totalButacas >= 80) {
+                // Sala mediana (ej: 8x12 o 10x15)
+                $tamanoButaca = 'w-6 h-6 sm:w-7 sm:h-7 lg:w-[30px] lg:h-[30px]';
+                $textoButaca = 'text-[8.5px] sm:text-[9.5px] lg:text-[10px] font-bold';
+                $tamanoEscalera = 'w-4.5 sm:w-6 h-6 sm:h-7 lg:h-[30px]';
+                $gapColumnas = 'gap-1 sm:gap-1.5 sm:gap-2';
+                $gapFilas = 'space-y-2 sm:space-y-2.5';
+                $paddingCard = 'p-4 sm:p-6 lg:p-7';
+                $tamanoLetraFila = 'w-4 text-[10px] sm:text-xs';
+                $tamanoPantalla = 'max-w-lg sm:max-w-xl';
+                $esSalaGrande = false;
+            } else {
+                // Sala estándar o pequeña (< 80 asientos)
+                $tamanoButaca = 'w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9';
+                $textoButaca = 'text-[10px] sm:text-xs font-bold';
+                $tamanoEscalera = 'w-5 sm:w-7 h-7 sm:h-8 lg:h-9';
+                $gapColumnas = 'gap-1.5 sm:gap-2';
+                $gapFilas = 'space-y-2.5 sm:space-y-3.5';
+                $paddingCard = 'p-4 sm:p-8 lg:p-10';
+                $tamanoLetraFila = 'w-4 text-xs sm:text-sm';
+                $tamanoPantalla = 'max-w-md sm:max-w-lg';
+                $esSalaGrande = false;
+            }
+        @endphp
+
         <!-- Contenedor Principal de Selección y Resumen -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
 
             <div
-                class="lg:col-span-8 border border-gray-800 bg-gray-900/60 rounded-2xl p-4 sm:p-8 lg:p-12 min-h-[380px] sm:min-h-[480px] flex flex-col justify-between items-center shadow-xl overflow-hidden">
+                class="lg:col-span-8 border border-gray-800 bg-gray-900/60 rounded-2xl {{ $paddingCard }} min-h-[380px] sm:min-h-[460px] flex flex-col justify-between items-center shadow-xl overflow-hidden">
 
                 <!-- Pantalla -->
-                <div class="w-full max-w-lg text-center space-y-2.5 sm:space-y-3">
-                    <p class="text-[11px] sm:text-xs font-bold tracking-widest uppercase text-gray-400">PANTALLA DE SALA</p>
+                <div class="w-full {{ $tamanoPantalla }} text-center space-y-2 sm:space-y-2.5">
+                    <p class="text-[10px] sm:text-xs font-bold tracking-widest uppercase text-gray-400">PANTALLA DE SALA</p>
                     <div
-                        class="w-full h-1.5 bg-gradient-to-r from-gray-800 via-red-600 to-gray-800 rounded-full shadow-lg shadow-red-900/20">
+                        class="w-full h-1.5 bg-gradient-to-r from-gray-800 via-red-600 to-gray-800 rounded-full shadow-lg shadow-red-900/30">
                     </div>
-                    <p class="text-[10px] text-gray-500 sm:hidden">↔ Desliza horizontalmente si la sala es amplia</p>
+                    @if ($esSalaGrande)
+                        <p class="text-[10px] text-gray-400 font-medium xl:hidden">↔ Desliza suavemente para ver todas las butacas si tu pantalla es pequeña</p>
+                    @else
+                        <p class="text-[10px] text-gray-500 sm:hidden">↔ Desliza horizontalmente si la sala es amplia</p>
+                    @endif
                 </div>
 
-                <!-- Mapa de Asientos (Scroll horizontal suave en celulares para mantener cada fila intacta) -->
-                @php
-                    $escalerasCol = $mapaConfig['escaleras_despues_columna'] ?? [];
-                    $pasillosFila = $mapaConfig['pasillos_despues_fila'] ?? [];
-                    $celdasEscalera = $mapaConfig['celdas_escalera'] ?? [];
-                @endphp
-                <div class="my-6 sm:my-10 w-full overflow-x-auto pb-2">
-                    <div class="space-y-2.5 sm:space-y-4 min-w-max mx-auto px-1">
+                <!-- Mapa de Asientos -->
+                <div class="my-4 sm:my-6 w-full overflow-x-auto pb-3 seat-map-scroll">
+                    <div class="{{ $gapFilas }} min-w-max mx-auto px-2">
                         @foreach ($butacasPorFila as $fila => $butacas)
                             @php
                                 $tienePasilloDespues = in_array($fila, $pasillosFila, true);
                             @endphp
-                            <div class="flex items-center justify-center space-x-2 sm:space-x-3">
+                            <div class="flex items-center justify-center space-x-1.5 sm:space-x-2">
                                 <!-- Indicador Fila Izquierda -->
-                                <span class="w-4 text-center font-bold text-xs sm:text-sm text-gray-400 shrink-0">{{ $fila }}</span>
+                                <span class="{{ $tamanoLetraFila }} text-center font-bold text-gray-400 shrink-0 select-none">{{ $fila }}</span>
 
-                                <div class="flex flex-nowrap items-center gap-1.5 sm:gap-2 justify-center">
+                                <div class="flex flex-nowrap items-center {{ $gapColumnas }} justify-center">
                                     @foreach ($butacas->values() as $idx => $butaca)
                                         @php
                                             $numCol = $idx + 1;
@@ -71,9 +133,8 @@
                                         @if ($esEscaleraCelda)
                                             <!-- Escalera en extremo de fila -->
                                             <div title="Escalera de acceso"
-                                                class="w-7 h-7 sm:w-9 sm:h-9 border border-dashed border-amber-500/30 bg-amber-950/20 rounded-lg text-amber-400/80 flex flex-col items-center justify-center shrink-0 select-none">
-                                                <span class="text-[10px] sm:text-xs leading-none">🪜</span>
-                                                <span class="text-[7px] font-mono uppercase tracking-tighter hidden sm:block">ESC</span>
+                                                class="{{ $tamanoButaca }} border border-dashed border-amber-500/30 bg-amber-950/20 rounded sm:rounded-md text-amber-400/80 flex flex-col items-center justify-center shrink-0 select-none">
+                                                <span class="{{ $esSalaGrande ? 'text-[8px] sm:text-[9px]' : 'text-[10px] sm:text-xs' }} leading-none">🪜</span>
                                             </div>
                                         @else
                                             <button type="button"
@@ -81,12 +142,12 @@
                                                 :disabled="{{ $esDisponible ? 'false' : 'true' }}"
                                                 :class="{
                                                     'border-slate-700 bg-slate-800/85 text-slate-400 cursor-not-allowed': {{ !$esDisponible ? 'true' : 'false' }},
-                                                    'border-red-400 bg-red-600 text-white shadow-lg shadow-red-900/50 scale-105': {{ $esDisponible ? 'true' : 'false' }} &&
+                                                    'border-red-400 bg-red-600 text-white shadow-lg shadow-red-900/50 scale-105 z-10': {{ $esDisponible ? 'true' : 'false' }} &&
                                                         esSeleccionada('{{ $codigoClean }}'),
                                                     'border-slate-500 bg-slate-700 text-white hover:border-red-400 hover:bg-slate-600 shadow-sm': {{ $esDisponible ? 'true' : 'false' }} &&
                                                         !esSeleccionada('{{ $codigoClean }}')
                                                 }"
-                                                class="cursor-pointer w-7 h-7 sm:w-9 sm:h-9 border rounded-lg text-[10px] sm:text-xs font-bold flex items-center justify-center shrink-0 transition-all duration-200">
+                                                class="cursor-pointer {{ $tamanoButaca }} border rounded sm:rounded-md {{ $textoButaca }} flex items-center justify-center shrink-0 transition-all duration-200">
                                                 {{ $codigoClean }}
                                             </button>
                                         @endif
@@ -94,21 +155,21 @@
                                         <!-- Escalera Vertical entre Columnas -->
                                         @if ($numCol < $butacas->count() && $tieneEscaleraVertical)
                                             <div title="Pasillo / Escalera"
-                                                class="w-6 sm:w-8 h-7 sm:h-9 rounded bg-gray-950/80 border-x border-amber-500/25 flex flex-col items-center justify-between py-1 shrink-0 select-none">
-                                                <span class="w-3.5 h-0.5 bg-amber-500/30 rounded"></span>
-                                                <span class="text-[9px] leading-none">🪜</span>
-                                                <span class="w-3.5 h-0.5 bg-amber-500/30 rounded"></span>
+                                                class="{{ $tamanoEscalera }} rounded bg-gray-950/80 border-x border-amber-500/25 flex flex-col items-center justify-between py-0.5 sm:py-1 shrink-0 select-none">
+                                                <span class="w-1.5 sm:w-2.5 h-0.5 bg-amber-500/30 rounded"></span>
+                                                <span class="{{ $esSalaGrande ? 'text-[7.5px] sm:text-[8.5px]' : 'text-[9px]' }} leading-none">🪜</span>
+                                                <span class="w-1.5 sm:w-2.5 h-0.5 bg-amber-500/30 rounded"></span>
                                             </div>
                                         @endif
                                     @endforeach
                                 </div>
 
                                 <!-- Indicador Fila Derecha -->
-                                <span class="w-4 text-center font-bold text-xs sm:text-sm text-gray-400 shrink-0">{{ $fila }}</span>
+                                <span class="{{ $tamanoLetraFila }} text-center font-bold text-gray-400 shrink-0 select-none">{{ $fila }}</span>
                             </div>
 
                             @if ($tienePasilloDespues)
-                                <div class="my-1.5 py-1 px-4 rounded-lg bg-gray-950/70 border border-dashed border-amber-500/25 text-center text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-amber-400/80 flex items-center justify-center gap-2">
+                                <div class="my-1 sm:my-1.5 py-0.5 sm:py-1 px-3 sm:px-4 rounded-lg bg-gray-950/70 border border-dashed border-amber-500/25 text-center text-[8px] sm:text-[9px] font-bold uppercase tracking-widest text-amber-400/80 flex items-center justify-center gap-1.5">
                                     <span>🪜</span>
                                     <span>PASILLO DE ACCESO</span>
                                     <span>🪜</span>
@@ -120,7 +181,7 @@
 
                 <!-- Leyenda de Estados -->
                 <div
-                    class="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs font-medium text-gray-300 pt-4 border-t border-gray-800/60 w-full">
+                    class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs font-medium text-gray-300 pt-3 border-t border-gray-800/60 w-full">
                     <div class="flex items-center space-x-2">
                         <span class="w-3.5 h-3.5 sm:w-4 sm:h-4 border border-slate-500 bg-slate-700 rounded inline-block"></span>
                         <span class="text-white">Disponible</span>
@@ -186,31 +247,6 @@
                         </template>
                     </div>
                 </div>
-
-                @if (!empty($reservaPrevia['productos']))
-                    <!-- Dulcería y Snacks Guardados -->
-                    <div class="space-y-2 pt-2 border-t border-gray-800">
-                        <div class="flex items-center justify-between">
-                            <p class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <span>🍿</span> DULCERÍA GUARDADA
-                            </p>
-                            <span class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
-                                {{ count($reservaPrevia['productos']) }} ítems
-                            </span>
-                        </div>
-                        <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                            @foreach ($reservaPrevia['productos'] as $prod)
-                                <div class="flex justify-between items-center text-xs text-gray-300 bg-gray-950/60 p-2 rounded-lg border border-gray-800">
-                                    <span class="truncate pr-2 font-medium">{{ $prod['cantidad'] }}x {{ $prod['nombre'] }}</span>
-                                    <span class="font-bold text-amber-400 font-mono flex-shrink-0">S/ {{ number_format($prod['subtotal'] ?? ($prod['precio'] * $prod['cantidad']), 2) }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                        <p class="text-[10px] text-gray-400 italic">
-                            ✓ Tus snacks se mantendrán listos al continuar.
-                        </p>
-                    </div>
-                @endif
 
                 <hr class="border-gray-800">
 

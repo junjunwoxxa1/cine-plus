@@ -65,8 +65,7 @@ class ReservaController extends Controller
             'butacasPorFila',
             'mapaConfig',
             'butacasSeleccionadas',
-            'cantidadSeleccionada',
-            'reservaPrevia'
+            'cantidadSeleccionada'
         ));
     }
 
