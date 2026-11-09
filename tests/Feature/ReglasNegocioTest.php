@@ -246,3 +246,18 @@ test('flujo de compra de entradas recuerda los productos de dulceria al retroced
     $responseDulceria->assertOk();
     $responseDulceria->assertSee($producto->nombre);
 });
+
+test('pantalla de butacas incluye modal de tiempo agotado con opcion de 5 minutos mas y retorno automatico en 20 segundos', function () {
+    $this->seed();
+
+    $funcion = Funcion::with('sala')->first();
+
+    $response = $this->get(route('reservas.butacas', $funcion));
+    $response->assertOk();
+    $response->assertSee('¡Tu tiempo de espera terminó!');
+    $response->assertSee('+5 Minutos más');
+    $response->assertSee('Salir al inicio');
+    $response->assertSee('tiempoRespuesta: 20');
+    $response->assertSee('extenderTiempo()');
+    $response->assertSee('salirAlInicio()');
+});

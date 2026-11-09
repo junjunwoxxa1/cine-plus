@@ -1,5 +1,8 @@
 <x-layouts::auth.clear :title="'Seleccionar Butacas - ' . $funcion->pelicula->titulo">
     <style>
+        [x-cloak] {
+            display: none !important;
+        }
         .seat-map-scroll::-webkit-scrollbar {
             height: 6px;
         }
@@ -18,7 +21,9 @@
 
     <main class="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5" x-data="reservaButacas({
         cantidadPermitida: {{ (int) ($cantidadSeleccionada ?? 2) }},
-        butacasIniciales: {{ json_encode($butacasSeleccionadas ?? []) }}
+        butacasIniciales: {{ json_encode($butacasSeleccionadas ?? []) }},
+        tiempoInicial: {{ (int) request('tiempo', 300) }},
+        urlCancelar: '{{ route('reservas.cancelar') }}'
     })">
 
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -34,12 +39,15 @@
             </a>
 
             <div
-                class="border border-gray-800 bg-gray-900/80 text-gray-200 px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-bold tracking-wider rounded-xl flex items-center gap-2 shadow-lg">
+                @click="adelantarTiempoPrueba()"
+                title="Tiempo restante de reserva (clic para simular aviso de expiración)"
+                :class="tiempoRestante <= 60 ? 'border-red-500/80 bg-red-950/70 text-red-200 animate-pulse' : 'border-gray-800 bg-gray-900/80 text-gray-200'"
+                class="cursor-pointer border px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-bold tracking-wider rounded-xl flex items-center gap-2 shadow-lg transition-colors select-none">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10" stroke-width="2" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2" />
                 </svg>
-                <span>Reserva: <span class="text-white" x-text="formatearTiempo(tiempoRestante)">09:59</span>
+                <span>Reserva: <span class="text-white font-mono" x-text="formatearTiempo(tiempoRestante)">05:00</span>
                     </span>
             </div>
         </div>
@@ -277,6 +285,66 @@
             </div>
 
         </div>
+
+        <!-- Modal de Notificación por Tiempo de Espera Agotado -->
+        <div x-show="modalTiempoAgotado" x-cloak
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+
+            <div x-show="modalTiempoAgotado"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl shadow-red-950/50 space-y-5 text-center relative overflow-hidden">
+
+                <!-- Barra de progreso superior de los 20 segundos -->
+                <div class="absolute top-0 left-0 right-0 h-1.5 bg-gray-800">
+                    <div class="h-full bg-gradient-to-r from-red-600 via-amber-500 to-red-500 transition-all duration-1000 ease-linear"
+                        :style="'width: ' + ((tiempoRespuesta / 20) * 100) + '%'"></div>
+                </div>
+
+                <!-- Icono de Alerta de Tiempo -->
+                <div class="w-16 h-16 rounded-full bg-red-600/15 border border-red-500/30 flex items-center justify-center mx-auto text-red-500 animate-bounce">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" stroke-width="2" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2" />
+                    </svg>
+                </div>
+
+                <div class="space-y-2">
+                    <h3 class="text-xl font-extrabold text-white tracking-tight">¡Tu tiempo de espera terminó!</h3>
+                    <p class="text-sm text-gray-300 leading-relaxed">
+                        ¿Deseas quedarte <strong class="text-amber-400">5 minutos más</strong> para terminar de elegir tus butacas o prefieres salir?
+                    </p>
+                </div>
+
+                <!-- Contador regresivo de 20 segundos de respuesta -->
+                <div class="bg-gray-950/90 border border-gray-800 rounded-xl p-3.5 space-y-1">
+                    <p class="text-xs text-gray-400">Si no hay respuesta, retornarás al inicio en:</p>
+                    <p class="text-2xl font-black font-mono text-red-400">
+                        <span x-text="tiempoRespuesta">20</span> <span class="text-xs font-bold uppercase tracking-wider text-gray-400">segundos</span>
+                    </p>
+                </div>
+
+                <!-- Botones de Decisión -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <button type="button" @click="extenderTiempo()"
+                        class="cursor-pointer w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 border border-red-500 text-white text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-red-900/40 transition-all">
+                        ⏱️ +5 Minutos más
+                    </button>
+
+                    <button type="button" @click="salirAlInicio()"
+                        class="cursor-pointer w-full py-3 px-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 hover:text-white text-xs font-bold uppercase tracking-wider transition-all">
+                        Salir al inicio
+                    </button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Lógica en Alpine JS -->
@@ -285,14 +353,65 @@
             Alpine.data('reservaButacas', (config) => ({
                 cantidadPermitida: config.cantidadPermitida || 2,
                 seleccionadas: (config.butacasIniciales && Array.isArray(config.butacasIniciales)) ? [...config.butacasIniciales] : [],
-                tiempoRestante: 599, // 9 minutos y 59 segundos en segundos
+                tiempoRestante: (config.tiempoInicial && config.tiempoInicial > 0) ? config.tiempoInicial : 300, // 5 minutos en segundos
+                modalTiempoAgotado: false,
+                tiempoRespuesta: 20, // 20 segundos de espera antes de retornar al inicio
+                urlCancelar: config.urlCancelar || '/',
+                intervaloPrincipal: null,
+                redirigiendo: false,
 
                 init() {
-                    setInterval(() => {
-                        if (this.tiempoRestante > 0) {
-                            this.tiempoRestante--;
+                    this.iniciarTemporizador();
+                },
+
+                iniciarTemporizador() {
+                    if (this.intervaloPrincipal) {
+                        clearInterval(this.intervaloPrincipal);
+                    }
+
+                    this.intervaloPrincipal = setInterval(() => {
+                        if (!this.modalTiempoAgotado) {
+                            if (this.tiempoRestante > 0) {
+                                this.tiempoRestante--;
+                            }
+                            if (this.tiempoRestante <= 0) {
+                                this.abrirModalTiempoAgotado();
+                            }
+                        } else {
+                            if (this.tiempoRespuesta > 0) {
+                                this.tiempoRespuesta--;
+                            }
+                            if (this.tiempoRespuesta <= 0 && !this.redirigiendo) {
+                                this.salirAlInicio();
+                            }
                         }
                     }, 1000);
+                },
+
+                abrirModalTiempoAgotado() {
+                    this.tiempoRespuesta = 20;
+                    this.modalTiempoAgotado = true;
+                },
+
+                extenderTiempo() {
+                    this.modalTiempoAgotado = false;
+                    this.tiempoRestante = 300; // Otorga 5 minutos más (300 segundos)
+                    this.tiempoRespuesta = 20;
+                },
+
+                salirAlInicio() {
+                    if (this.redirigiendo) return;
+                    this.redirigiendo = true;
+                    if (this.intervaloPrincipal) {
+                        clearInterval(this.intervaloPrincipal);
+                    }
+                    window.location.href = this.urlCancelar;
+                },
+
+                adelantarTiempoPrueba() {
+                    if (!this.modalTiempoAgotado && this.tiempoRestante > 3) {
+                        this.tiempoRestante = 3;
+                    }
                 },
 
                 formatearTiempo(segundos) {
