@@ -3,6 +3,7 @@
 use App\Livewire\Admin\Funciones;
 use App\Livewire\Admin\Salas;
 use App\Livewire\Pos\DulceriaPos;
+use App\Models\Configuracion;
 use App\Models\Funcion;
 use App\Models\Pelicula;
 use App\Models\Producto;
@@ -260,4 +261,79 @@ test('pantalla de butacas incluye modal de tiempo agotado con opcion de 5 minuto
     $response->assertSee('tiempoRespuesta: 20');
     $response->assertSee('extenderTiempo()');
     $response->assertSee('salirAlInicio()');
+});
+
+test('peliculas con fecha_fin vencida son marcadas como expiradas y excluidas de cartelera vigente', function () {
+    $this->seed();
+
+    $peliculaVigente = Pelicula::create([
+        'titulo' => 'Película Vigente Test',
+        'duracion' => 120,
+        'clasificacion' => 'TE',
+        'genero' => 'Acción',
+        'sinopsis' => 'Prueba vigente',
+        'activo' => true,
+        'fecha_estreno' => now()->subDays(5),
+        'fecha_fin' => now()->addDays(15),
+    ]);
+
+    $peliculaExpirada = Pelicula::create([
+        'titulo' => 'Película Expirada Test',
+        'duracion' => 100,
+        'clasificacion' => 'TE',
+        'genero' => 'Drama',
+        'sinopsis' => 'Prueba expirada',
+        'activo' => true,
+        'fecha_estreno' => now()->subDays(30),
+        'fecha_fin' => now()->subDays(1),
+    ]);
+
+    expect($peliculaVigente->isExpirada())->toBeFalse();
+    expect($peliculaVigente->isVigente())->toBeTrue();
+    expect($peliculaExpirada->isExpirada())->toBeTrue();
+    expect($peliculaExpirada->isVigente())->toBeFalse();
+
+    $vigentes = Pelicula::vigentes()->pluck('id');
+    expect($vigentes)->toContain($peliculaVigente->id);
+    expect($vigentes)->not->toContain($peliculaExpirada->id);
+});
+
+test('pantalla de butacas muestra leyenda de disponible con tono vivo y claro', function () {
+    $this->seed();
+    $funcion = Funcion::with('sala')->first();
+
+    $response = $this->get(route('reservas.butacas', $funcion));
+    $response->assertOk();
+    $response->assertSee('bg-sky-600');
+    $response->assertSee('Disponible');
+});
+
+test('pos dulceria permite identificar cliente por correo y crear cuenta invitado asignando puntos', function () {
+    $this->seed();
+
+    $vendedor = User::first() ?? User::factory()->create();
+    $producto = Producto::where('activo', true)->where('stock', '>', 5)->first();
+
+    Livewire::actingAs($vendedor)
+        ->test(DulceriaPos::class)
+        ->set('clienteEmail', 'invitado.pos@cineplus.com')
+        ->set('clienteNombre', 'Carlos Invitado')
+        ->set('clientePassword', 'ClaveSegura123')
+        ->call('agregarAlCarrito', $producto->id)
+        ->set('metodoPago', 'efectivo')
+        ->set('montoRecibido', 100)
+        ->call('registrarVenta')
+        ->assertHasNoErrors()
+        ->assertSet('modalTicketAbierto', true);
+
+    $nuevoCliente = User::where('email', 'invitado.pos@cineplus.com')->first();
+    expect($nuevoCliente)->not->toBeNull();
+    expect($nuevoCliente->name)->toBe('Carlos Invitado');
+
+    // Debe tener los 5 puntos de dulcería otorgados por su compra
+    $saldoPuntos = Configuracion::puntosSeparadosActivo()
+        ? $nuevoCliente->puntos_dulceria
+        : $nuevoCliente->saldo_puntos;
+
+    expect($saldoPuntos)->toBe(5);
 });

@@ -23,7 +23,7 @@
                         <th class="px-6 py-4">Película</th>
                         <th class="px-6 py-4">Género</th>
                         <th class="px-6 py-4">Duración</th>
-                        <th class="px-6 py-4">Clasificación</th>
+                        <th class="px-6 py-4">Disponibilidad / Vigencia</th>
                         <th class="px-6 py-4 text-center">Carrusel Banner</th>
                         <th class="px-6 py-4">Funciones</th>
                         <th class="px-6 py-4 text-right">Acciones</th>
@@ -31,22 +31,48 @@
                 </thead>
                 <tbody class="divide-y divide-zinc-800/60">
                     @forelse ($peliculas as $p)
-                        <tr class="hover:bg-zinc-800/30 transition-colors" wire:key="pel-{{ $p->id }}">
+                        <tr class="{{ $p->isExpirada() ? 'bg-zinc-950/90 opacity-60 border-l-4 border-l-red-600' : 'hover:bg-zinc-800/30' }} transition-colors" wire:key="pel-{{ $p->id }}">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
                                     <img src="{{ $p->imagen_url }}" alt="{{ $p->titulo }}" class="w-12 h-16 object-cover rounded-lg border border-zinc-800 bg-zinc-950 shrink-0">
                                     <div>
-                                        <p class="font-bold text-white leading-tight">{{ $p->titulo }}</p>
-                                        <p class="text-xs text-zinc-400 mt-0.5">{{ $p->director ?? 'Director no asignado' }} &bull; {{ $p->idioma }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="font-bold text-white leading-tight">{{ $p->titulo }}</p>
+                                            @if ($p->isExpirada())
+                                                <span class="text-[9px] font-black uppercase tracking-wider bg-red-950 text-red-400 border border-red-800 px-1.5 py-0.5 rounded">Expirada</span>
+                                            @endif
+                                        </div>
+                                        <p class="text-xs text-zinc-400 mt-0.5">{{ $p->director ?? 'Director no asignado' }} &bull; {{ $p->idioma }} &bull; {{ $p->clasificacion }}</p>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-xs font-semibold text-zinc-300">{{ $p->genero }}</td>
                             <td class="px-6 py-4 text-xs text-zinc-400 font-mono whitespace-nowrap">{{ $p->duracion }} min</td>
-                            <td class="px-6 py-4">
-                                <span class="text-[10px] font-black uppercase tracking-wider bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded border border-zinc-700">
-                                    {{ $p->clasificacion }}
-                                </span>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if ($p->isExpirada())
+                                    <div class="space-y-1">
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider bg-red-950/80 text-red-400 border border-red-500/40 px-2 py-0.5 rounded shadow-sm">
+                                            ⛔ Fuera de Cartelera
+                                        </span>
+                                        <p class="text-[10px] text-zinc-500 font-mono">Expiró: {{ $p->fecha_fin->format('d/m/Y') }}</p>
+                                        <button type="button" wire:click="renovar({{ $p->id }}, 30)" class="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer block">
+                                            ⚡ Renovar (+30 días)
+                                        </button>
+                                    </div>
+                                @elseif ($p->fecha_fin)
+                                    <div>
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded">
+                                            ✅ Hasta {{ $p->fecha_fin->format('d/m/Y') }}
+                                        </span>
+                                        @if ($p->fecha_estreno)
+                                            <p class="text-[10px] text-zinc-500 font-mono mt-0.5">Desde: {{ $p->fecha_estreno->format('d/m/Y') }}</p>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="text-[10px] font-semibold text-zinc-400 bg-zinc-800/60 px-2 py-0.5 rounded border border-zinc-700">
+                                        ♾️ Cartelera Continua
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-center whitespace-nowrap">
                                 <button type="button" wire:click="toggleBanner({{ $p->id }})"
@@ -139,11 +165,21 @@
                 </flux:field>
             </div>
 
-            <flux:field>
-                <flux:label>Fecha de Estreno</flux:label>
-                <flux:input type="date" wire:model="fecha_estreno" />
-                <flux:error name="fecha_estreno" />
-            </flux:field>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <flux:field>
+                    <flux:label>Fecha de Estreno / Inicio</flux:label>
+                    <flux:input type="date" wire:model="fecha_estreno" />
+                    <flux:description>Primer día disponible en cartelera</flux:description>
+                    <flux:error name="fecha_estreno" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Disponible Hasta (Fin de Temporada)</flux:label>
+                    <flux:input type="date" wire:model="fecha_fin" />
+                    <flux:description>Al expirar, no mostrará funciones y quedará inactiva</flux:description>
+                    <flux:error name="fecha_fin" />
+                </flux:field>
+            </div>
 
             <div class="p-4 bg-zinc-950/60 border border-zinc-800 rounded-xl space-y-3">
                 <flux:checkbox wire:model="en_banner" label="Destacar en el Carrusel Banner Principal de la Web" description="Si se activa, esta película aparecerá con su imagen de portada en el carrusel de inicio." />

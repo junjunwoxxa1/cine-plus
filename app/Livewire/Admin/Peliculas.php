@@ -34,6 +34,8 @@ class Peliculas extends Component
 
     public string $fecha_estreno = '';
 
+    public string $fecha_fin = '';
+
     public int $duracion = 120;
 
     public string $clasificacion = 'PG-13';
@@ -53,6 +55,7 @@ class Peliculas extends Component
             'director' => 'nullable|string|max:100',
             'genero' => 'nullable|string|max:100',
             'fecha_estreno' => 'nullable|date',
+            'fecha_fin' => 'nullable|date|after_or_equal:fecha_estreno',
             'duracion' => 'required|integer|min:1',
             'clasificacion' => 'nullable|string|max:20',
             'idioma' => 'nullable|string|max:50',
@@ -89,7 +92,7 @@ class Peliculas extends Component
 
     public function crear(): void
     {
-        $this->reset(['peliculaId', 'titulo', 'imagen', 'descripcion', 'director', 'genero', 'fecha_estreno', 'en_banner', 'orden_banner']);
+        $this->reset(['peliculaId', 'titulo', 'imagen', 'descripcion', 'director', 'genero', 'fecha_estreno', 'fecha_fin', 'en_banner', 'orden_banner']);
         $this->duracion = 120;
         $this->clasificacion = 'PG-13';
         $this->idioma = 'Español Latino';
@@ -108,6 +111,7 @@ class Peliculas extends Component
         $this->director = $p->director ?? '';
         $this->genero = $p->genero ?? '';
         $this->fecha_estreno = $p->fecha_estreno ? $p->fecha_estreno->format('Y-m-d') : '';
+        $this->fecha_fin = $p->fecha_fin ? $p->fecha_fin->format('Y-m-d') : '';
         $this->duracion = (int) $p->duracion;
         $this->clasificacion = $p->clasificacion ?? 'PG-13';
         $this->idioma = $p->idioma ?? 'Español Latino';
@@ -116,10 +120,24 @@ class Peliculas extends Component
         $this->modalAbierto = true;
     }
 
+    public function renovar(int $id, int $dias = 30): void
+    {
+        $p = Pelicula::findOrFail($id);
+        $nuevaFecha = today()->addDays($dias)->format('Y-m-d');
+        $p->fecha_fin = $nuevaFecha;
+        $p->save();
+
+        Flux::toast(
+            variant: 'success',
+            text: "«{$p->titulo}» ha sido renovada en cartelera hasta el {$p->fecha_fin->format('d/m/Y')}."
+        );
+    }
+
     public function guardar(): void
     {
         $validated = $this->validate();
         $validated['fecha_estreno'] = $this->fecha_estreno ? $this->fecha_estreno : null;
+        $validated['fecha_fin'] = $this->fecha_fin ? $this->fecha_fin : null;
 
         if ($this->peliculaId) {
             $p = Pelicula::findOrFail($this->peliculaId);

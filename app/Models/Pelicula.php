@@ -31,6 +31,7 @@ class Pelicula extends Model
         'director',
         'genero',
         'fecha_estreno',
+        'fecha_fin',
         'duracion',
         'clasificacion',
         'idioma',
@@ -45,10 +46,38 @@ class Pelicula extends Model
      */
     protected $casts = [
         'fecha_estreno' => 'date',
+        'fecha_fin' => 'date',
         'duracion' => 'integer',
         'en_banner' => 'boolean',
         'orden_banner' => 'integer',
     ];
+
+    /**
+     * Determina si la película ha finalizado su periodo de disponibilidad (expirada).
+     */
+    public function isExpirada(): bool
+    {
+        return $this->fecha_fin !== null && now()->startOfDay()->gt($this->fecha_fin->startOfDay());
+    }
+
+    /**
+     * Determina si la película está actualmente vigente en cartelera.
+     */
+    public function isVigente(): bool
+    {
+        return ! $this->isExpirada();
+    }
+
+    /**
+     * Scope para filtrar únicamente películas vigentes en cartelera.
+     */
+    public function scopeVigentes($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('fecha_fin')
+                ->orWhereDate('fecha_fin', '>=', today());
+        });
+    }
 
     /**
      * Scope para películas elegidas para el banner carrusel principal.

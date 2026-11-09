@@ -476,6 +476,15 @@ class Funciones extends Component
             $pelicula = Pelicula::findOrFail($validated['pelicula_id']);
             $duracionPelicula = (int) ($pelicula->duracion ?: 120);
 
+            // Validar que la fecha no exceda el fin de temporada de la película
+            $dtValidacion = Carbon::parse($validated['fecha_hora']);
+            if ($pelicula->fecha_fin && $dtValidacion->startOfDay()->gt($pelicula->fecha_fin->startOfDay())) {
+                $this->addError('fecha_hora', "La fecha de la función excede la vigencia de «{$pelicula->titulo}» (disponible hasta el {$pelicula->fecha_fin->format('d/m/Y')}). Renueva las fechas de la película para programarla.");
+                $this->guardando = false;
+
+                return;
+            }
+
             [$filasCount, $colCount] = $this->dimensionesDeSala($sala);
 
             $plantillaElegida = $this->plantilla_funcion !== 'heredar' ? $this->plantilla_funcion : null;

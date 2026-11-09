@@ -85,8 +85,9 @@ class Cartelera extends Component
             ->sort()
             ->values();
 
-        // 4. Consulta dinámica de películas y horarios
+        // 4. Consulta dinámica de películas vigentes y horarios
         $peliculasQuery = Pelicula::query()
+            ->vigentes()
             ->with(['funciones' => function ($q) {
                 $q->with('sala')
                     ->when($this->sede !== 'all', function ($qSede) {
@@ -143,6 +144,7 @@ class Cartelera extends Component
         $sugerencias = collect();
         if ($this->search !== '' && $this->mostrarSugerencias) {
             $sugerencias = Pelicula::query()
+                ->vigentes()
                 ->where(function ($q) {
                     $termino = '%'.$this->search.'%';
                     $q->where('titulo', 'like', $termino)

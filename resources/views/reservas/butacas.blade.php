@@ -152,7 +152,7 @@
                                                     'border-slate-700 bg-slate-800/85 text-slate-400 cursor-not-allowed': {{ !$esDisponible ? 'true' : 'false' }},
                                                     'border-red-400 bg-red-600 text-white shadow-lg shadow-red-900/50 scale-105 z-10': {{ $esDisponible ? 'true' : 'false' }} &&
                                                         esSeleccionada('{{ $codigoClean }}'),
-                                                    'border-slate-500 bg-slate-700 text-white hover:border-red-400 hover:bg-slate-600 shadow-sm': {{ $esDisponible ? 'true' : 'false' }} &&
+                                                    'border-sky-400 bg-sky-600/90 text-white hover:border-red-400 hover:bg-sky-500 shadow-sm': {{ $esDisponible ? 'true' : 'false' }} &&
                                                         !esSeleccionada('{{ $codigoClean }}')
                                                 }"
                                                 class="cursor-pointer {{ $tamanoButaca }} border rounded sm:rounded-md {{ $textoButaca }} flex items-center justify-center shrink-0 transition-all duration-200">
@@ -191,7 +191,7 @@
                 <div
                     class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs font-medium text-gray-300 pt-3 border-t border-gray-800/60 w-full">
                     <div class="flex items-center space-x-2">
-                        <span class="w-3.5 h-3.5 sm:w-4 sm:h-4 border border-slate-500 bg-slate-700 rounded inline-block"></span>
+                        <span class="w-3.5 h-3.5 sm:w-4 sm:h-4 border border-sky-400 bg-sky-600/90 rounded inline-block shadow-sm"></span>
                         <span class="text-white">Disponible</span>
                     </div>
                     <div class="flex items-center space-x-2">

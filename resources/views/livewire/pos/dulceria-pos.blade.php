@@ -228,13 +228,54 @@
                 </div>
             </div>
 
-            {{-- Datos del Comprador Mostrador --}}
+            {{-- Datos del Comprador Mostrador y Puntos Club Cine+ --}}
             <div class="space-y-2 pt-2 border-t border-gray-800">
                 <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nombre del Cliente</label>
-                    <input type="text" wire:model="clienteNombre" placeholder="Cliente Mostrador"
-                        class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    <div class="flex items-center justify-between">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                            <span>⭐</span> Correo del Cliente (Club Cine+)
+                        </label>
+                        <span class="text-[9px] text-amber-400 font-bold">+5 pts por compra</span>
+                    </div>
+                    <input type="email" wire:model.live.debounce.400ms="clienteEmail" placeholder="cliente@correo.com (opcional para puntos)"
+                        class="w-full bg-gray-950 border @error('clienteEmail') border-red-500 @else border-gray-800 @enderror rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500">
+                    @error('clienteEmail')
+                        <p class="text-[10px] text-red-400 font-bold">{{ $message }}</p>
+                    @enderror
+
+                    @if ($mensajeSocio)
+                        <div class="p-2 rounded-lg text-[10px] font-bold flex items-center gap-1.5 {{ $esClienteNuevo ? 'bg-amber-950/60 border border-amber-500/40 text-amber-300' : 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300' }}">
+                            <span>{{ $esClienteNuevo ? '✨' : '✅' }}</span>
+                            <span>{{ $mensajeSocio }}</span>
+                        </div>
+                    @endif
                 </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Nombre del Cliente {{ $esClienteNuevo ? '(Requerido para cuenta)' : '' }}
+                    </label>
+                    <input type="text" wire:model="clienteNombre" placeholder="Cliente Mostrador"
+                        class="w-full bg-gray-950 border @error('clienteNombre') border-red-500 @else border-gray-800 @enderror rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    @error('clienteNombre')
+                        <p class="text-[10px] text-red-400 font-bold">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Contraseña si es nuevo cliente / invitado para crear su cuenta y darle puntos --}}
+                @if ($esClienteNuevo)
+                    <div class="space-y-1 p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/30">
+                        <label class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
+                            🔑 Contraseña para su nueva cuenta Club Cine+
+                        </label>
+                        <input type="password" wire:model="clientePassword" placeholder="Mínimo 6 caracteres"
+                            class="w-full bg-gray-900 border @error('clientePassword') border-red-500 @else border-gray-700 @enderror rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-amber-500">
+                        <p class="text-[9px] text-gray-400">El cliente podrá ingresar a la web con su correo y contraseña para canjear sus puntos.</p>
+                        @error('clientePassword')
+                            <p class="text-[10px] text-red-400 font-bold">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @endif
 
                 {{-- Método de Pago --}}
                 <div class="space-y-1 pt-1">
@@ -344,6 +385,15 @@
                         <div class="flex justify-between text-[10px] text-gray-700">
                             <span>Vuelto:</span>
                             <span>S/ {{ number_format($ticketVenta['vuelto'], 2) }}</span>
+                        </div>
+                    @endif
+
+                    @if (($ticketVenta['puntos_ganados'] ?? 0) > 0)
+                        <div class="p-1.5 bg-amber-50 rounded text-center text-[10px] font-bold text-amber-900 border border-amber-300">
+                            ⭐ Puntos Ganados: +{{ $ticketVenta['puntos_ganados'] }} pts Club Cine+
+                            @if (!empty($ticketVenta['saldo_puntos']))
+                                <span class="block text-[9px] font-normal text-amber-800">Saldo Total: {{ $ticketVenta['saldo_puntos'] }} pts</span>
+                            @endif
                         </div>
                     @endif
 

@@ -4,8 +4,12 @@ namespace App\Livewire\Pos;
 
 use App\Models\CategoriaProducto;
 use App\Models\Comprobante;
+use App\Models\Configuracion;
 use App\Models\Producto;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -23,10 +27,16 @@ class DulceriaPos extends Component
     // id => ['id', 'nombre', 'precio', 'cantidad', 'subtotal', 'stock_max']
     public array $carrito = [];
 
-    // Datos del cobro
+    // Datos del cobro y fidelización de puntos Club Cine+
     public string $clienteNombre = 'Cliente Mostrador';
 
     public string $clienteEmail = '';
+
+    public string $clientePassword = '';
+
+    public bool $esClienteNuevo = false;
+
+    public ?string $mensajeSocio = null;
 
     public string $metodoPago = 'efectivo';
 
@@ -38,6 +48,43 @@ class DulceriaPos extends Component
     public ?array $ticketVenta = null;
 
     public bool $modalTicketAbierto = false;
+
+    public function updatedClienteEmail(string $val): void
+    {
+        $email = trim($val);
+        $this->resetErrorBag(['clienteEmail', 'clienteNombre', 'clientePassword']);
+
+        if (empty($email)) {
+            $this->esClienteNuevo = false;
+            $this->mensajeSocio = null;
+            $this->clienteNombre = 'Cliente Mostrador';
+            $this->clientePassword = '';
+
+            return;
+        }
+
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->esClienteNuevo = false;
+            $this->mensajeSocio = null;
+
+            return;
+        }
+
+        $usuario = User::where('email', $email)->first();
+
+        if ($usuario) {
+            $this->esClienteNuevo = false;
+            $this->clienteNombre = $usuario->name;
+            $this->clientePassword = '';
+            $this->mensajeSocio = "Socio Club Cine+: {$usuario->name} (Saldo: {$usuario->saldo_puntos} pts)";
+        } else {
+            $this->esClienteNuevo = true;
+            $this->mensajeSocio = 'Nuevo cliente / Invitado: Se creará su cuenta para acumular sus puntos.';
+            if ($this->clienteNombre === 'Cliente Mostrador') {
+                $this->clienteNombre = '';
+            }
+        }
+    }
 
     public function agregarAlCarrito(int $productoId): void
     {
@@ -100,6 +147,11 @@ class DulceriaPos extends Component
     {
         $this->carrito = [];
         $this->montoRecibido = 0.0;
+        $this->clienteNombre = 'Cliente Mostrador';
+        $this->clienteEmail = '';
+        $this->clientePassword = '';
+        $this->esClienteNuevo = false;
+        $this->mensajeSocio = null;
         $this->resetErrorBag();
     }
 
@@ -162,6 +214,51 @@ class DulceriaPos extends Component
                 return;
             }
         }
+        // Identificación del cliente y validación de nuevo registro para otorgar puntos
+        $clienteUsuario = null;
+        $emailLimpio = trim($this->clienteEmail);
+
+        if (! empty($emailLimpio)) {
+            if (! filter_var($emailLimpio, FILTER_VALIDATE_EMAIL)) {
+                $this->addError('clienteEmail', 'Ingresa un correo electrónico válido.');
+
+                return;
+            }
+
+            $usuarioExistente = User::where('email', $emailLimpio)->first();
+
+            if ($usuarioExistente) {
+                $clienteUsuario = $usuarioExistente;
+            } else {
+                // Nuevo cliente invitado: pide nombre y contraseña para registrar cuenta y acumular puntos
+                $nombreLimpio = trim($this->clienteNombre);
+                if (empty($nombreLimpio) || $nombreLimpio === 'Cliente Mostrador') {
+                    $this->addError('clienteNombre', 'Ingresa el nombre del cliente para crear su cuenta Club Cine+.');
+
+                    return;
+                }
+
+                if (empty($this->clientePassword) || mb_strlen($this->clientePassword) < 6) {
+                    $this->addError('clientePassword', 'Ingresa una contraseña de al menos 6 caracteres para crear la cuenta de socio del cliente.');
+
+                    return;
+                }
+
+                $rolCliente = Role::firstWhere('slug', Role::CLIENTE);
+
+                $clienteUsuario = User::create([
+                    'name' => $nombreLimpio,
+                    'email' => $emailLimpio,
+                    'password' => Hash::make($this->clientePassword),
+                    'role_id' => $rolCliente?->id,
+                    'saldo_puntos' => 0,
+                    'puntos_cine' => 0,
+                    'puntos_dulceria' => 0,
+                    'email_verified_at' => now(),
+                ]);
+            }
+        }
+
         $itemsSnapshot = $this->carrito;
         $cajeroNombre = auth()->user()?->name ?? 'Cajero Dulcería';
         $metodoSeleccionado = match ($this->metodoPago) {
@@ -172,16 +269,16 @@ class DulceriaPos extends Component
             default => 'Otro',
         };
 
-        $comprobante = DB::transaction(function () use ($totalFinal, $itemsSnapshot, $metodoSeleccionado) {
+        $comprobante = DB::transaction(function () use ($totalFinal, $itemsSnapshot, $metodoSeleccionado, $clienteUsuario, $emailLimpio) {
             $correlativo = (int) (Comprobante::max('id') ?? 0) + 1;
             $numeroTicket = str_pad((string) $correlativo, 7, '0', STR_PAD_LEFT);
             $codigoReserva = 'CP-POS-'.strtoupper(Str::random(4));
 
             $nuevoComprobante = Comprobante::create([
                 'codigo_reserva' => $codigoReserva,
-                'user_id' => auth()->id(),
-                'cliente_nombre' => trim($this->clienteNombre) ?: 'Cliente Mostrador',
-                'cliente_email' => $this->clienteEmail ?: null,
+                'user_id' => $clienteUsuario ? $clienteUsuario->id : auth()->id(),
+                'cliente_nombre' => $clienteUsuario ? $clienteUsuario->name : (trim($this->clienteNombre) ?: 'Cliente Mostrador'),
+                'cliente_email' => $clienteUsuario ? $clienteUsuario->email : ($emailLimpio ?: null),
                 'sede' => 'Cine+ Mostrador Dulcería',
                 'sala' => 'Módulo Express Consumos',
                 'pelicula_titulo' => 'Consumos Dulcería / Venta Directa',
@@ -226,6 +323,17 @@ class DulceriaPos extends Component
                 'updated_at' => now(),
             ]);
 
+            // Otorgar puntos correspondientes al cliente por su compra
+            if ($clienteUsuario && $totalFinal > 0) {
+                if (Configuracion::puntosSeparadosActivo()) {
+                    $clienteUsuario->sumarPuntosDulceria(5);
+                } else {
+                    $clienteUsuario->increment('saldo_puntos', 5);
+                    $clienteUsuario->puntos_dulceria = (int) ($clienteUsuario->puntos_dulceria ?? 0) + 5;
+                    $clienteUsuario->save();
+                }
+            }
+
             return $nuevoComprobante;
         });
 
@@ -235,6 +343,9 @@ class DulceriaPos extends Component
             'serie_numero' => $comprobante->serie_numero,
             'fecha' => now()->format('d/m/Y H:i:s'),
             'cliente' => $comprobante->cliente_nombre,
+            'email' => $comprobante->cliente_email,
+            'puntos_ganados' => $clienteUsuario ? 5 : 0,
+            'saldo_puntos' => $clienteUsuario ? (int) $clienteUsuario->saldo_puntos : null,
             'cajero' => $cajeroNombre,
             'items' => $itemsSnapshot,
             'total' => $totalFinal,
@@ -248,8 +359,6 @@ class DulceriaPos extends Component
 
         // Limpiar carrito para siguiente venta
         $this->limpiarCarrito();
-        $this->clienteNombre = 'Cliente Mostrador';
-        $this->clienteEmail = '';
     }
 
     public function cerrarModalTicket(): void
